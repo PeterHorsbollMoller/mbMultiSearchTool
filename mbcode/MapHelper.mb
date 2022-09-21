@@ -1,0 +1,168 @@
+'*******************************************************************************
+'** 	Created By Peter Horsbøll Møller, Pitney Bowes Business Insight
+'** 	Program:
+'** 	Modul:
+'**
+'*******************************************************************************
+
+'-------------------------------------
+Include "MapBasic.def"
+Include "Icons.def"
+Include "Menu.def"
+Include "Enums.def"
+'**default constants...
+Include "Library\Defaults.def"
+
+'-------------------------------------
+Include "Library\COLUMNLib.def"
+Include "Library\DEBUGLib.def"
+Include "Library\ERRORLib.def"
+Include "Library\LAYERLib.def"
+Include "Library\MAPPERLib.def"
+Include "Library\ProgramInfo.def"
+Include "Library\RIBBONLib.def"
+Include "Library\STRINGLib.def"
+Include "Library\TABLELib.def"
+
+Include "Library\Dialogs\DLGSelectTableAndColumn.def"
+
+Include "MapHelper.def"
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes Software
+'Parameters:
+'
+'**********************************************************************************************''
+Sub MAPHSelectWithinMap
+
+Dim	nMID, nLayer As Integer,
+	oExtent As Object,
+	sText, sLayer As String
+
+OnError GoTo ErrorOccured
+
+	nMID	= MAPFrontMostWindow()
+	If nMID = 0 Then
+		Call RBNNotificationShow(PRGIGetApplicationName(), "Front window is not a map window!", Notify_Error, 10000)
+		Exit Sub
+	End If
+
+	For nLayer = 1 To MapperInfo(nMID, MAPPER_INFO_LAYERS)
+		If LayerInfo(nMID, nLayer, LAYER_INFO_TYPE) = LAYER_INFO_TYPE_NORMAL Then
+			If NOT LayerInfo(nMID, nLayer, LAYER_INFO_DISPLAY) = LAYER_INFO_DISPLAY_OFF Then
+				If LayerInfo(nMID, nLayer, LAYER_INFO_SELECTABLE) Then
+					sLayer = LayerInfo(nMID, nLayer, LAYER_INFO_NAME)
+				End If
+			End If
+		End If
+	Next
+
+	If sLayer = "" Then
+		Call RBNNotificationShow(PRGIGetApplicationName(), "No selectable layer in map!", Notify_Error, 10000)
+		Exit Sub
+	End If
+
+'	sText = "Selecting from the table " & sLayer
+'		& lf & "Where the objects are within the extent of the map " & WindowInfo(nMID, WIN_INFO_NAME)
+'	Call RBNNotificationShow(PRGIGetApplicationName(), sText, Notify_Info, 10000)
+
+	oExtent	= MAPGetExtent(nMID)
+	Select * From sLayer
+		Where OBJ Within oExtent
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "MAPHSelectWithinMap")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Sub MAPHZoomToSelectionInFrontMap
+
+Dim	nMID, nBID As Integer
+
+OnError GoTo ErrorOccured
+
+	If SelectionInfo(SEL_INFO_NROWS) = 0 Then
+		Call RBNNotificationShow(PRGIGetApplicationName(), "Selection contanins no records!", Notify_Error, 10000)
+		Exit Sub
+	End If
+
+	nBID	= FrontWindow()
+
+	nMID	= MAPFrontMostWindow()
+	If nMID = 0 Then
+		Exit Sub
+	End If
+
+	Set Window nMID Front
+	Run Menu Command M_VIEW_ZOOM_TO_SELECTED_OBJECTS
+
+	If nBID > 0 And nBID <> nMID Then
+		Set Window nMID Front
+	End If
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "MAPHZoomToSelectionInFrontMap")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'
+'**********************************************************************************************''
+Sub MAPHPanToSelectionInFrontMap
+
+Dim	nMID As Integer,
+	sQuery As String,
+	aObj As Alias,
+	fX, fY As Float
+
+OnError GoTo ErrorOccured
+
+	If SelectionInfo(SEL_INFO_NROWS) <> 1 Then
+		Call RBNNotificationShow(PRGIGetApplicationName(), "Selection must only hold one record!", Notify_Error, 10000)
+		Exit Sub
+	End If
+
+	nMID	= MAPFrontMostWindow()
+	If nMID = 0 Then
+		Exit Sub
+	End If
+
+	sQuery	= SelectionInfo(SEL_INFO_SELNAME)
+	Fetch First From sQuery
+	aObj = sQuery & ".OBJ"
+	If not aObj Then
+		Call RBNNotificationShow(PRGIGetApplicationName(), "Selection has no spatial data!", Notify_Error, 10000)
+		Close Table sQuery
+		Exit Sub
+	End If
+
+	Set CoordSys Window nMID
+	fX	= CentroidX(MBR(aObj))
+	fY	= CentroidY(MBR(aObj))
+
+	Set Map
+		Window nMID
+		Center (fX, fY)
+
+	Close Table sQuery
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "MAPHPanToSelectionInFrontMap")
+	Call ERRShow()
+
+End Sub

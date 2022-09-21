@@ -1,0 +1,653 @@
+﻿'*******************************************************************************
+'** 	Created By Peter Horsbøll Møller, Precisely
+'** 	Program:
+'** 	Modul:
+'**
+'*******************************************************************************
+
+'-------------------------------------
+Include "MapBasic.def"
+Include "Icons.def"
+Include "Menu.def"
+'**default constants...
+Include "Library\Defaults.def"
+
+'-------------------------------------
+Include "Library\ARRAYLib.def"
+Include "Library\COLUMNLib.def"
+Include "Library\CONFIGFileLib.def"
+Include "Library\DEBUGLib.def"
+Include "Library\ERRORLib.def"
+Include "Library\TABLELib.def"
+
+Include "DLGConfigureWildcardSearch.def"
+
+Declare Sub DLGCWSHandler_OnLoad
+Declare Sub DLGCWSHandler_OKClicked
+Declare Sub DLGCWSHandler_TableClicked
+Declare Sub DLGCWSHandler_NumColumnsClicked
+Declare Sub DLGCWSHandler_IsWideClicked
+Declare Sub DLGCWSHandler_EnableDisableControls
+
+
+Define	MAX_NUM_COLUMNS			3	'Should be 3 when ready
+Define	CTRL_LST_TABLE				100
+Define	CTRL_CHK_NUMCOLS			200	'1-3
+Define	CTRL_GRP_COLUMN			300	'1-3
+Define	CTRL_LBL_COLUMNS			400	'1-3
+Define	CTRL_LST_COLUMNS			410	'1-3
+Define	CTRL_CHK_IS_WIDE			500	'1-3
+Define	CTRL_LBL_TITLE				600	'1-3
+Define	CTRL_TXT_TITLE				610	'1-3
+Define	CTRL_LBL_SEARCH_METHOD		700	'1-3
+Define	CTRL_LST_SEARCH_METHOD		710	'1-3
+
+Dim	marrTables(), marrColNames() As String,
+	msTabFile, marrSearchColNames(3), marrSearchColTitles(3) As String,
+	marrSearchMethod(3) As Integer,
+	marrIsWide(3) As Logical
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGConfigureWildcardSearch() As Logical
+
+OnError GoTo ErrorOccured
+
+DLGConfigureWildcardSearch = FALSE
+
+	ReDim marrTables(0)
+	If TABGetListOfNames(TAB_USE_ALL_BUT_IMAGES, marrTables()) = 0 Then
+		Note "Please open at least one table to search!"
+		Exit Function
+	End If
+
+		Dialog
+			Title "Configure Wildcard Search"
+			Calling DLGCWSHandler_OnLoad
+
+			Control StaticText	Position 5,5
+				Title "Table"
+			Control PopupMenu	Position 5,15			ID CTRL_LST_TABLE
+				Width 250
+				Title From Variable marrTables
+				Calling DLGCWSHandler_TableClicked
+
+			Control StaticText	Position 15,32
+				Title "Number of Columns to Search:"
+			Control CheckBox	Position 120,32		ID CTRL_CHK_NUMCOLS + 1
+				Title "1"
+				Value IIf(DLGCWSGetNumColumnsToSearch()=1, TRUE, FALSE)
+				Calling DLGCWSHandler_NumColumnsClicked
+			Control CheckBox	Position 150,32		ID CTRL_CHK_NUMCOLS + 2
+				Title "2"
+				Value IIf(DLGCWSGetNumColumnsToSearch()=2, TRUE, FALSE)
+				Calling DLGCWSHandler_NumColumnsClicked
+			Control CheckBox	Position 180,32		ID CTRL_CHK_NUMCOLS + 3
+				Title "3"
+				Value IIf(DLGCWSGetNumColumnsToSearch()=3, TRUE, FALSE)
+				Calling DLGCWSHandler_NumColumnsClicked
+
+			'--------------------------------------------------------------------
+			Control GroupBox	Position 5,45			ID CTRL_GRP_COLUMN + 1
+				Width 250	Height 45
+				Title "First Column"
+
+			Control	StaticText	Position 15,55		ID CTRL_LBL_TITLE + 1
+				Title "Title"
+			Control EditText	Position 15,65			ID CTRL_TXT_TITLE + 1
+				Width 60
+				Value marrSearchColTitles(1)
+
+			Control StaticText	Position 80,55			ID CTRL_LBL_COLUMNS + 1
+				Title "Column"
+			Control PopupMenu	Position 80,65			ID CTRL_LST_COLUMNS + 1
+				Width 95
+
+			Control CheckBox	Position 120,55		ID CTRL_CHK_IS_WIDE + 1
+				Title "Wide Field"
+				Value marrIsWide(1)
+				Calling DLGCWSHandler_IsWideClicked
+
+			Control StaticText	Position 180,55		ID CTRL_LBL_SEARCH_METHOD + 1
+				Title "Search Operator"
+			Control PopupMenu	Position 180,65		ID CTRL_LST_SEARCH_METHOD + 1
+				Width 65
+				Title "Contains (Like);Equal To (=)"
+				Value Maximum(1, marrSearchMethod(1))
+
+			'--------------------------------------------------------------------
+			Control GroupBox	Position 5,100			ID CTRL_GRP_COLUMN + 2
+				Width 250	Height 45
+				Title "Second Column"
+
+			Control StaticText	Position 15,110		ID CTRL_LBL_TITLE + 2
+				Title "Title"
+			Control EditText	Position 15,120		ID CTRL_TXT_TITLE + 2
+				Width 60
+				Value marrSearchColTitles(2)
+
+			Control StaticText	Position 80,110		ID CTRL_LBL_COLUMNS + 2
+				Title "Column"
+			Control PopupMenu	Position 80,120		ID CTRL_LST_COLUMNS + 2
+				Width 95
+
+			Control CheckBox	Position 120,110		ID CTRL_CHK_IS_WIDE + 2
+				Title "Wide Field"
+				Value marrIsWide(2)
+				Calling DLGCWSHandler_IsWideClicked
+
+			Control StaticText	Position 180,110		ID CTRL_LBL_SEARCH_METHOD + 2
+				Title "Search Operator"
+			Control PopupMenu	Position 180,120		ID CTRL_LST_SEARCH_METHOD + 2
+				Width 65
+				Title "Contains (Like);Equal To (=)"
+				Value Maximum(1, marrSearchMethod(2))
+
+			'--------------------------------------------------------------------
+			Control GroupBox	Position 5,155			ID CTRL_GRP_COLUMN + 3
+				Width 250	Height 45
+				Title "Third Column"
+
+			Control StaticText	Position 15,165		ID CTRL_LBL_TITLE + 3
+				Title "Title"
+			Control EditText	Position 15,175		ID CTRL_TXT_TITLE + 3
+				Width 60
+				Value marrSearchColTitles(3)
+
+			Control StaticText	Position 80,165		ID CTRL_LBL_COLUMNS + 3
+				Title "Column"
+			Control PopupMenu	Position 80,175		ID CTRL_LST_COLUMNS + 3
+				Width 95
+
+			Control CheckBox	Position 120,165		ID CTRL_CHK_IS_WIDE + 3
+				Title "Wide Field"
+				Value marrIsWide(3)
+				Calling DLGCWSHandler_IsWideClicked
+
+			Control StaticText	Position 180,165		ID CTRL_LBL_SEARCH_METHOD + 3
+				Title "Search Operator"
+			Control PopupMenu	Position 180,175		ID CTRL_LST_SEARCH_METHOD + 3
+				Width 65
+				Title "Contains (Like);Equal To (=)"
+				Value Maximum(1, marrSearchMethod(3))
+
+			Control OKButton
+				Calling DLGCWSHandler_OKClicked
+			Control CancelButton
+
+		If not CommandInfo(CMD_INFO_DLG_OK) Then
+			Exit Function
+		End If
+
+
+DLGConfigureWildcardSearch = TRUE
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGConfigureWildcardSearch")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGCWSHandler_OnLoad
+
+Dim	nTabItem As Integer
+
+OnError GoTo ErrorOccured
+
+	If DLGCWSGetTable() <> "" Then
+		nTabItem = ARRAYFindValueString(marrTables, DLGCWSGetTable())
+		If nTabItem > 0 Then
+			Alter Control CTRL_LST_TABLE Value nTabItem
+			Call DLGCWSHandler_TableClicked
+		End If
+	End If
+
+	Call DLGCWSHandler_EnableDisableControls
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCWSHandler_OnLoad")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGCWSHandler_OKClicked
+
+Dim	nItem, nColOn, nColOff, nNumCols, nNumColsOn As Integer
+
+OnError GoTo ErrorOccured
+
+	nItem = ReadControlValue(CTRL_LST_TABLE)
+	If nItem = 0 Then
+		Note "Please select a table from the list!"
+		Dialog Preserve
+		Exit Sub
+	End If
+
+	msTabFile = TableInfo(marrTables(nItem), TAB_INFO_TABFILE)
+
+	nNumColsOn = 0
+	For nNumCols = 1 To MAX_NUM_COLUMNS
+		If ReadControlValue(CTRL_CHK_NUMCOLS+nNumCols) Then
+			nNumColsOn = nNumCols
+			Exit For
+		End If
+	Next
+	If nNumColsOn = 0 Then
+		Note "Please select at least one search column!"
+		Dialog Preserve
+		Exit Sub
+	End If
+
+	Call DEBUGPrint("On: 1 to " & nNumColsOn)
+	For nColOn = 1 To nNumColsOn
+		marrSearchColNames(nColOn) 	= marrColNames(ReadControlValue(CTRL_LST_COLUMNS+nColOn))
+		marrSearchColTitles(nColOn) 	= ReadControlValue(CTRL_TXT_TITLE+nColOn)
+		marrSearchMethod(nColOn) 	= ReadControlValue(CTRL_LST_SEARCH_METHOD+nColOn)
+		marrIsWide(nColOn) 			= ReadControlValue(CTRL_CHK_IS_WIDE+nColOn)
+	Next
+
+	Call DEBUGPrint("Off: " & nColOn & " to 3")
+	For nColOff = nColOn To 3
+		marrSearchColNames(nColOff) 	= ""
+		marrSearchColTitles(nColOff) 	= ""
+		marrSearchMethod(nColOff) 	= 1
+		marrIsWide(nColOff) 		= FALSE
+	Next
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCWSHandler_OKClicked")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGCWSHandler_TableClicked
+
+Dim	nColTypes, nCtrl, nTab As Integer,
+	sTab As String
+
+OnError GoTo ErrorOccured
+
+	nTab = ReadControlValue(CTRL_LST_TABLE)
+	If nTab = 0 Then
+		Exit Sub
+	End If
+	sTab	= marrTables(nTab)
+
+	nColTypes = CRITERIA_USE_CHAR + CRITERIA_USE_INTEGER + CRITERIA_USE_SMALLINT + CRITERIA_USE_LARGEINT
+	Redim marrColNames(0)
+	If COLGetListOfNames(sTab, nColTypes, marrColNames()) > 0 Then
+		For nCtrl = 1 To MAX_NUM_COLUMNS
+			Alter Control (CTRL_LST_COLUMNS + nCtrl) Enable
+			Alter Control (CTRL_LST_COLUMNS + nCtrl) Title From Variable marrColNames
+
+			Alter Control (CTRL_LST_COLUMNS + nCtrl) Value Maximum(1, ARRAYFindValueString(marrColNames, marrSearchColNames(nCtrl)))
+		Next
+	Else
+		For nCtrl = 1 To MAX_NUM_COLUMNS
+			Alter Control (CTRL_LST_COLUMNS + nCtrl) Disable
+			Alter Control (CTRL_LST_COLUMNS + nCtrl) Title From Variable marrColNames
+		Next
+	End If
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCWSHandler_TableClicked")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGCWSHandler_NumColumnsClicked
+
+Dim	nCtrlClicked, nCtrl As Integer
+
+OnError GoTo ErrorOccured
+
+	nCtrlClicked = TriggerControl()
+
+	For nCtrl = 1 To MAX_NUM_COLUMNS
+		If Not nCtrlClicked = (nCtrl + CTRL_CHK_NUMCOLS) Then
+			Alter Control (nCtrl + CTRL_CHK_NUMCOLS) Value FALSE
+		Else
+			Alter Control (nCtrl + CTRL_CHK_NUMCOLS) Value TRUE
+		End If
+	Next
+
+	Call DLGCWSHandler_EnableDisableControls
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCWSHandler_NumColumnsClicked")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGCWSHandler_IsWideClicked
+
+Dim	nCtrlClicked, nCtrl As Integer
+
+OnError GoTo ErrorOccured
+
+	nCtrlClicked = TriggerControl()
+
+	For nCtrl = 1 To MAX_NUM_COLUMNS
+		If Not nCtrlClicked = (nCtrl + CTRL_CHK_IS_WIDE) Then
+			Alter Control (nCtrl + CTRL_CHK_IS_WIDE) Value FALSE
+		End If
+	Next
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCWSHandler_IsWideClicked")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGCWSHandler_EnableDisableControls
+
+Dim	nColOn, nColOff, nNumCols, nNumColsOn As Integer,
+	bWideChecked As Logical
+
+OnError GoTo ErrorOccured
+
+	nNumColsOn = 0
+	For nNumCols = 1 To MAX_NUM_COLUMNS
+		If ReadControlValue(CTRL_CHK_NUMCOLS+nNumCols) Then
+			nNumColsOn = nNumCols
+			Exit For
+		End If
+	Next
+	If nNumColsOn = 0 Then
+		nNumColsOn = 1
+		Alter Control CTRL_CHK_NUMCOLS+nNumColsOn Value TRUE
+	End If
+
+	Call DEBUGPrint("DLGCWSHandler_EnableDisableControls, On: 1 to " & nNumColsOn)
+	For nColOn = 1 To nNumColsOn
+		Alter Control CTRL_GRP_COLUMN+nColOn		Enable
+		Alter Control CTRL_LST_COLUMNS+nColOn		Enable
+		Alter Control CTRL_LBL_COLUMNS+nColOn		Enable
+		Alter Control CTRL_CHK_IS_WIDE+nColOn		Enable
+		Alter Control CTRL_TXT_TITLE+nColOn		Enable
+		Alter Control CTRL_LBL_TITLE+nColOn		Enable
+		Alter Control CTRL_LST_SEARCH_METHOD+nColOn	Enable
+		Alter Control CTRL_LBL_SEARCH_METHOD+nColOn	Enable
+
+		If ReadControlValue(CTRL_CHK_IS_WIDE+nColOn) Then
+			bWideChecked = TRUE
+		End If
+	Next
+
+	If not bWideChecked Then
+		Alter Control CTRL_CHK_IS_WIDE+nNumColsOn	Value TRUE
+	End If
+
+	Call DEBUGPrint("DLGCWSHandler_EnableDisableControls, Off: " & nColOn & " to 3")
+	For nColOff = nColOn To 3
+		Alter Control CTRL_GRP_COLUMN+nColOff		Disable
+		Alter Control CTRL_LST_COLUMNS+nColOff		Disable
+		Alter Control CTRL_LBL_COLUMNS+nColOff		Disable
+		Alter Control CTRL_CHK_IS_WIDE+nColOff		Disable
+		Alter Control CTRL_CHK_IS_WIDE+nColOff		Value FALSE
+		Alter Control CTRL_TXT_TITLE+nColOff		Disable
+		Alter Control CTRL_LBL_TITLE+nColOff		Disable
+		Alter Control CTRL_LST_SEARCH_METHOD+nColOff	Disable
+		Alter Control CTRL_LBL_SEARCH_METHOD+nColOff	Disable
+	Next
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCWSHandler_EnableDisableControls")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGCWSGetNumColumnsToSearch() As Integer
+
+Dim	nCol, nNumCols As Integer
+
+OnError GoTo ErrorOccured
+
+DLGCWSGetNumColumnsToSearch = 1
+
+	nNumCols = 1
+	For nCol = 1 To MAX_NUM_COLUMNS
+		Call DEBUGPrint(nCol & ": " & marrSearchColNames(nCol))
+		If marrSearchColNames(nCol) = "" Then
+			Exit For
+		Else
+			nNumCols = nCol
+		End If
+	Next
+	Call DEBUGPrint("Number of Columns: " & nNumCols)
+	Call DEBUGPrint("Number of Columns: " & Minimum(nNumCols, MAX_NUM_COLUMNS))
+
+	DLGCWSGetNumColumnsToSearch = Minimum(nNumCols, MAX_NUM_COLUMNS)
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCWSGetNumColumnsToSearch")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Sub DLGCWSSetTabFile( ByVal sFile As String)
+
+OnError GoTo ErrorOccured
+
+	msTabFile = sFile
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCWSSetTabFile")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+Function DLGCWSGetTabFile() As String
+
+OnError GoTo ErrorOccured
+
+	DLGCWSGetTabFile = msTabFile
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCWSGetTabFile")
+	Call ERRShow()
+
+End Function
+'**********************************************************************************************''
+Function DLGCWSGetTable() As String
+
+OnError GoTo ErrorOccured
+
+	DLGCWSGetTable = ""
+	If msTabFile <> "" Then
+		DLGCWSGetTable = PathToTableName$(msTabFile)
+	End If
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCWSGetTable")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+' Property
+'**********************************************************************************************''
+Sub DLGCWSSetColumnsToSearch(arrColumns() As String)
+
+OnError GoTo ErrorOccured
+
+	Redim marrSearchColNames(0)
+	Call ARRAYAddArrayString(arrColumns, marrSearchColNames)
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCWSSetColumnsToSearch")
+
+End Sub
+'**********************************************************************************************''
+Function DLGCWSGetColumnsToSearch(arrColumns() As String) As Integer
+
+OnError GoTo ErrorOccured
+
+	Redim arrColumns(0)
+	Call ARRAYAddArrayString(marrSearchColNames, arrColumns)
+	DLGCWSGetColumnsToSearch = Ubound(arrColumns)
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCWSGetColumnsToSearch")
+
+End Function
+
+'**********************************************************************************************''
+' Property
+'**********************************************************************************************''
+Sub DLGCWSSetColumnsToSearchTitle(arrTitles() As String)
+
+OnError GoTo ErrorOccured
+
+	Redim marrSearchColTitles(0)
+	Call ARRAYAddArrayString(arrTitles, marrSearchColTitles)
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCWSSetColumnsToSearchTitle")
+
+End Sub
+'**********************************************************************************************''
+Function DLGCWSGetColumnsToSearchTitle(arrTitles() As String) As Integer
+
+OnError GoTo ErrorOccured
+
+	Redim arrTitles(0)
+	Call ARRAYAddArrayString(marrSearchColTitles, arrTitles)
+	DLGCWSGetColumnsToSearchTitle = Ubound(arrTitles)
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCWSGetColumnsToSearchTitle")
+
+End Function
+
+'**********************************************************************************************''
+' Property
+'**********************************************************************************************''
+Sub DLGCWSSetIsColumnsToSearchWide(arrIsWide() As Logical)
+
+OnError GoTo ErrorOccured
+
+	Redim marrIsWide(0)
+	Call ARRAYAddArrayLogical(arrIsWide, marrIsWide)
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCWSSetIsColumnsToSearchWide")
+
+End Sub
+'**********************************************************************************************''
+Function DLGCWSIsColumnsToSearchWide(arrIsWide() As Logical) As Integer
+
+OnError GoTo ErrorOccured
+
+	Redim arrIsWide(0)
+	Call ARRAYAddArrayLogical(marrIsWide, arrIsWide)
+	DLGCWSIsColumnsToSearchWide = Ubound(arrIsWide)
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCWSIsColumnsToSearchWide")
+
+End Function
+
+'**********************************************************************************************''
+' Property
+'**********************************************************************************************''
+Sub DLGCWSSetColumnsToSearchMethod(arrMethods() As Integer)
+
+OnError GoTo ErrorOccured
+
+	Redim marrSearchMethod(0)
+	Call ARRAYAddArrayInteger(arrMethods, marrSearchMethod)
+	Exit Sub
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCWSSetColumnsToSearchMethod")
+
+End Sub
+'**********************************************************************************************''
+Function DLGCWSGetColumnsToSearchMethod(arrMethods() As Integer) As Integer
+
+OnError GoTo ErrorOccured
+
+	Redim arrMethods(0)
+	Call ARRAYAddArrayInteger(marrSearchMethod, arrMethods)
+	DLGCWSGetColumnsToSearchMethod = Ubound(arrMethods)
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGCWSGetColumnsToSearchMethod")
+
+End Function

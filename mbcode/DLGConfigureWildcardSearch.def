@@ -1,0 +1,15 @@
+﻿Declare Function DLGConfigureWildcardSearch() As Logical
+
+Declare Sub DLGCWSSetTabFile( ByVal sFile As String)
+Declare Function DLGCWSGetTabFile() As String
+Declare Function DLGCWSGetTable() As String
+
+Declare Function DLGCWSGetNumColumnsToSearch() As Integer
+Declare Sub DLGCWSSetColumnsToSearch(arrColumns() As String)
+Declare Function DLGCWSGetColumnsToSearch(arrColumns() As String) As Integer
+Declare Sub DLGCWSSetColumnsToSearchTitle(arrTitles() As String)
+Declare Function DLGCWSGetColumnsToSearchTitle(arrTitles() As String) As Integer
+Declare Sub DLGCWSSetIsColumnsToSearchWide(arrIsWide() As Logical)
+Declare Function DLGCWSIsColumnsToSearchWide(arrIsWide() As Logical) As Integer
+Declare Sub DLGCWSSetColumnsToSearchMethod(arrMethods() As Integer)
+Declare Function DLGCWSGetColumnsToSearchMethod(arrMethods() As Integer) As Integer

@@ -1,0 +1,65 @@
+Define	SEARCH_TYPE_LIKE		1
+Define	SEARCH_TYPE_EQUAL_TO	2
+
+Declare Function DLGFindUsingWildcard() As Logical
+
+Declare Sub DLGFUWCSetResultListWidth(ByVal nWidth As Integer)
+Declare Function DLGFUWCGetResultListWidth() As Integer
+Declare Sub DLGFUWCSetResultListHeight(ByVal nHeight As Integer)
+Declare Function DLGFUWCGetResultListHeight() As Integer
+
+Declare Function DLGFUWCGetSearchControlPosition(ByVal nCtrl As Integer) As Integer
+Declare Function DLGFUWCGetSearchControlWidth(ByVal nCtrl As Integer) As Integer
+Declare Function DLGFUWCGetSearchControlTitle(ByVal nCtrl As Integer) As String
+Declare Function DLGFUWCIsSearchControlVisible(ByVal nCtrl As Integer) As Logical
+Declare Function DLGFUWCNumSearchControls() As Integer
+
+Declare Sub DLGFUWCSetConfigFile(ByVal sFile As String)
+Declare Function DLGFUWCGetConfigFile() As String
+Declare Sub DLGFUWCReadConfigFile()
+Declare Sub DLGFUWCWriteConfigFile()
+
+Declare Function DLGFUWCSearchDatabaseTable() As Logical
+
+Declare Sub DLGFUWCSetDBSchema(ByVal sSchema As String)
+Declare Function DLGFUWCGetDBSchema() As String
+Declare Sub DLGFUWCSetDBTable(ByVal sTable As String)
+Declare Function DLGFUWCGetDBTable() As String
+
+Declare Sub DLGFUWCSetColumnToSearch(ByVal nColumnNo As Integer, ByVal sColumn As String)
+Declare Function DLGFUWCGetColumnToSearch(ByVal nColumnNo As Integer) As String
+Declare Sub DLGFUWCSetColumnToSearchTitle(ByVal nColumnNo As Integer, ByVal sTitle As String)
+Declare Function DLGFUWCGetColumnToSearchTitle(ByVal nColumnNo As Integer) As String
+Declare Sub DLGFUWCSetIsColumnToSearchWide(ByVal nColumnNo As Integer, ByVal bIsWide As Logical)
+Declare Function DLGFUWCIsColumnToSearchWide(ByVal nColumnNo As Integer) As Logical
+Declare Sub DLGFUWCSetColumnToSearchMethod(ByVal nColumnNo As Integer, ByVal nMethod As Integer)
+Declare Function DLGFUWCGetColumnToSearchMethod(ByVal nColumnNo As Integer) As Integer
+Declare Function DLGFUWCGetSearchMethodAsString(ByVal nColumnNo As Integer) As String
+
+'Declare Sub DLGFUWCSetMITable(ByVal sTable As String)
+Declare Function DLGFUWCGetMITable() As String
+Declare Function DLGFUWCGetMITabFile() As String
+Declare Sub DLGFUWCSetMITabFile(ByVal sFile As String)
+
+Declare Sub DLGFUWCSetColumnWithUniqueID(ByVal sColumn As String)
+Declare Function DLGFUWCGetColumnWithUniqueID() As String
+
+Declare Sub DLGFUWCSetZoomWidth(ByVal nZoomWidth As Integer)
+Declare Function DLGFUWCGetZoomWidth() As Integer
+Declare Sub DLGFUWCSetUseZoom(ByVal bUseZoom As Logical)
+Declare Function DLGFUWCUseZoom() As Logical
+
+Declare Sub DLGFUWCSetSearchValue(ByVal nColumnNo As Integer, ByVal sSearchFor As String)
+Declare Function DLGFUWCGetSearchValue(ByVal nColumnNo As Integer) As String
+
+Declare Sub DLGFUWCSetMaximumMatchNumber(ByVal nMaxMatches As Integer)
+Declare Function DLGFUWCGetMaximumMatchNumber() As Integer
+
+Declare Sub DLGFUWCSetDSNFile(ByVal sDSNFile As String)
+Declare Function DLGFUWCGetDSNFile() As String
+Declare Sub DLGFUWCSetUserName(ByVal sUserName As String)
+Declare Function DLGFUWCGetUserName() As String
+Declare Sub DLGFUWCSetPassword(ByVal sPassword As String)
+Declare Function DLGFUWCGetPassword() As String
+Declare Function DLGFUWCGetConnection() As Integer
+

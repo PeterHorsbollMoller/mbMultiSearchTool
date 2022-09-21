@@ -1,0 +1,437 @@
+'*******************************************************************************
+'**   Created by Peter Horsbøll Møller, Precisely
+'** 	Program:
+'** 	Modul:
+'**
+'*******************************************************************************
+
+'-------------------------------------
+Include "MapBasic.def"
+Include "Enums.def"
+Include "Icons.def"
+Include "Menu.def"
+Include "RibbonControls.def"
+
+'**default constants...
+Include "Library\Defaults.def"
+'Include "Library\MI_ICONS_X64.def"
+'Include "Library\RibbonElements.def"
+
+Define xProgram 		"MultiSearchTool"
+Define xProgramName 	"Multi Search Tool"
+Define xProgramMenu		"MultiSearchTool"
+Define xVersion 		"1.0.0"
+Define xYear			"2022"
+Define xAddToMenuBar	FALSE
+
+Define FILE_INI			GetFolderPath$(FOLDER_MI_PREFERENCE) & xProgram & ".ini"
+Define FILE_DBG			ApplicationDirectory$() & xProgram & ".dbg"
+'Define FILE_DLL			ApplicationDirectory$() & xProgram & ".dll"
+Define FILE_PAD			GetFolderPath$(FOLDER_MI_PREFERENCE) & xProgram & ".btp"
+Define PATH_IMAGES			ApplicationDirectory$() & "Images\"
+Define FILE_IMAGE			PATH_IMAGES & "SearchMultiple_32.png"
+Define FILE_HLP			ApplicationDirectory$() & xProgram & ".pdf"
+'-------------------------------------
+Include "Library\CONFIGFILELib.def"
+Include "Library\DEBUGLib.def"
+Include "Library\ERRORLib.def"
+Include "Library\MAPPERLib.def"
+Include "Library\ProgramInfo.def"
+Include "Library\RIBBONLib.def"
+Include "Library\TABLELib.def"
+
+Include "DLGMSTConfiguration.def"
+Include "DLGFindUsingWildcard.def"
+Include "DLGSearchAllColumns.def"
+Include "DLGConfigureWildcardSearch.def"
+Include "MapHelper.def"
+Include "TableHelper.def"
+
+'-----------------------------------------------------------------------------------------
+Declare Sub Main
+Declare Sub MENUBuildRibbonInterface
+Declare Sub EndProgram
+Declare Sub EndHandler
+
+Declare Sub MENUConfiguration
+Declare Sub MENUSearchWildcard
+Declare Sub MENUSearchAllColumns
+
+'**********************************************************************************************''
+'**   Created by Peter Horsbøll Møller, Precisely
+'
+'**********************************************************************************************''
+Sub Main
+
+OnError GoTo ErrorOccured
+
+'	If NOT SystemInfo(SYS_INFO_MAPINFO_INTERFACE) = MIINTERFACE_RIBBON Then
+'		Note "Please note that this tool was build for MapInfo Pro 64 bit only!"
+'		End Program
+'	End If
+
+	'***Initializing ApplicationInfo
+	Call PRGISetApplicationName(xProgramName)
+	Call PRGISetApplicationVersion(xVersion)
+	Call PRGISetApplicationCopyrightYear(xYear)
+	'Call PRGISetApplicationDevelopedBy("Peter Horsbøll Møller")
+	Call PRGISetDescription("This tool lets you search your data in multiple ways.")
+	Call PRGISetApplicationImageUri(FILE_IMAGE)
+	Call PRGISetApplicationHelpFile(FILE_HLP)
+
+	'***Enabling Debug if file exists
+	Call DEBUGEnableByFile(FILE_DBG)
+
+	Call DLGFUWCSetConfigFile(FILE_INI)
+	Call DLGMSTSetConfigFile(FILE_INI)
+
+	'**Specifying some default values
+	Call DLGFUWCSetResultListWidth(220)
+	Call DLGFUWCSetResultListHeight(200)
+	Call DLGFUWCSetZoomWidth(250)
+	Call DLGFUWCSetMaximumMatchNumber(10000)
+
+	'**Reading config files for Wildcard Search
+	Call DLGFUWCReadConfigFile()
+	Call DLGMSTReadConfigFile()
+
+	Call MENUBuildRibbonInterface
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "Main")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub MENUBuildRibbonInterface
+
+Dim	nCtrlIdx As Integer,
+	sTabName, sGroupName, sSplitButtonName, sSplitButtonGroupName As String
+
+OnError GoTo ErrorOccured
+
+	'** M A P   T A B ***************************************************************
+	sTabName				= TAB_MAP
+	sGroupName			= TAB_MAP_SELECTION_GRP
+	sSplitButtonName		= BTN_MAP_FIND_SPLIT
+     sSplitButtonGroupName	= MNU_DROPDOWN_GRP_MAP_FIND
+
+	nCtrlIdx = RBNSplitButtonGroupAddControl("cmdMapWildcardSearch", "Wildcard Search", "", ControlType_Button, sTabName, sGroupName, sSplitButtonName, sSplitButtonGroupName)
+	If nCtrlIdx > 0 Then
+		Call RBNControlSetToolTipIdx(nCtrlIdx, PRGIGetApplicationName(), "Locate data using wildcard search", "")
+		Call RBNControlSetIconsIdx(nCtrlIdx, CONTROL_SIZE_LARGE, "", PATH_IMAGES & "SearchMultiple_32.png")
+		Call RBNControlSetCustomMBXHandlerIdx(nCtrlIdx, "MENUSearchWildcard")
+	End If
+
+	nCtrlIdx = RBNSplitButtonGroupAddControl("cmdMapSearchAllColumns", "Search Columns", "", ControlType_Button, sTabName, sGroupName, sSplitButtonName, sSplitButtonGroupName)
+	If nCtrlIdx > 0 Then
+		Call RBNControlSetToolTipIdx(nCtrlIdx, PRGIGetApplicationName(), "Search through multiple columns in a table for given value", "")
+		Call RBNControlSetIconsIdx(nCtrlIdx, CONTROL_SIZE_LARGE, MI_IMG_MAP_FIND_16, MI_IMG_MAP_FIND_32)
+		Call RBNControlSetCustomMBXHandlerIdx(nCtrlIdx, "MENUSearchAllColumns")
+	End If
+
+	'** T A B L E   T A B ***************************************************************
+	sTabName				= TAB_TABLE
+
+	sGroupName			= TAB_TABLE_SELECTION_GRP
+	sSplitButtonName		= BTN_TABLE_MAP_FIND_SPLIT
+     sSplitButtonGroupName	= MNU_DROPDOWN_GRP_MAP_FIND
+
+	nCtrlIdx = RBNSplitButtonGroupAddControl("cmdTableWildcardSearch", "Wildcard Search", "", ControlType_Button, sTabName, sGroupName, sSplitButtonName, sSplitButtonGroupName)
+	If nCtrlIdx > 0 Then
+		Call RBNControlSetToolTipIdx(nCtrlIdx, PRGIGetApplicationName(), "Locate data using wildcard search", "")
+		Call RBNControlSetIconsIdx(nCtrlIdx, CONTROL_SIZE_LARGE, "", PATH_IMAGES & "SearchMultiple_32.png")
+		Call RBNControlSetCustomMBXHandlerIdx(nCtrlIdx, "MENUSearchWildcard")
+	End If
+
+	nCtrlIdx = RBNSplitButtonGroupAddControl("cmdTableSearchAllColumns", "Search Columns", "", ControlType_Button, sTabName, sGroupName, sSplitButtonName, sSplitButtonGroupName)
+	If nCtrlIdx > 0 Then
+		Call RBNControlSetToolTipIdx(nCtrlIdx, PRGIGetApplicationName(), "Search through multiple columns in a table for given value", "")
+		Call RBNControlSetIconsIdx(nCtrlIdx, CONTROL_SIZE_LARGE, MI_IMG_MAP_FIND_16, MI_IMG_MAP_FIND_32)
+		Call RBNControlSetCustomMBXHandlerIdx(nCtrlIdx, "MENUSearchAllColumns")
+	End If
+
+	sGroupName			= TAB_TABLE_SORT_GRP
+
+	nCtrlIdx = RBNGroupAddControl("cmdTabSearchAllColumns", "Search Columns", "", ControlType_Button, sTabName, sGroupName)
+	If nCtrlIdx > 0 Then
+		Call RBNControlSetToolTipIdx(nCtrlIdx, PRGIGetApplicationName(), "Search through all columns in the browser for given value", "")
+		Call RBNControlSetIconsIdx(nCtrlIdx, CONTROL_SIZE_LARGE, MI_IMG_MAP_FIND_16, MI_IMG_MAP_FIND_32)
+		Call RBNControlSetCustomMBXHandlerIdx(nCtrlIdx, "MENUSearchAllColumns")
+	End If
+
+	'** S P A T I A L   T A B ***************************************************************
+	sTabName				= TAB_SPATIAL
+
+	sGroupName			= TAB_SPATIAL_SELECTION_GRP
+	sSplitButtonName		= BTN_SPATIAL_FIND_SPLIT
+     sSplitButtonGroupName	= MNU_DROPDOWN_GRP_MAP_FIND
+
+	nCtrlIdx = RBNSplitButtonGroupAddControl("cmdSpatialWildcardSearch", "Wildcard Search", "", ControlType_Button, sTabName, sGroupName, sSplitButtonName, sSplitButtonGroupName)
+	If nCtrlIdx > 0 Then
+		Call RBNControlSetToolTipIdx(nCtrlIdx, PRGIGetApplicationName(), "Locate data using wildcard search", "")
+		Call RBNControlSetIconsIdx(nCtrlIdx, CONTROL_SIZE_LARGE, "", PATH_IMAGES & "SearchMultiple_32.png")
+		Call RBNControlSetCustomMBXHandlerIdx(nCtrlIdx, "MENUSearchWildcard")
+	End If
+
+	nCtrlIdx = RBNSplitButtonGroupAddControl("cmdSpatialSearchAllColumns", "Search Columns", "", ControlType_Button, sTabName, sGroupName, sSplitButtonName, sSplitButtonGroupName)
+	If nCtrlIdx > 0 Then
+		Call RBNControlSetToolTipIdx(nCtrlIdx, PRGIGetApplicationName(), "Search through multiple columns in a table for given value", "")
+		Call RBNControlSetIconsIdx(nCtrlIdx, CONTROL_SIZE_LARGE, MI_IMG_MAP_FIND_16, MI_IMG_MAP_FIND_32)
+		Call RBNControlSetCustomMBXHandlerIdx(nCtrlIdx, "MENUSearchAllColumns")
+	End If
+
+	'** B R O W S E R   C O N T E X T   M E N U ***************************************************************
+	If DLGMSTAddFilterUsingCellValue() Then
+		nCtrlIdx = RBNCntxtMenuInsertMenuItem(MenuId_BrowserShortcut, "brwsCntxtFilterCellValue", "Filter using Cell Value", "", 4)
+		If nCtrlIdx > 0 Then
+			Call RBNControlSetToolTipIdx(nCtrlIdx, PRGIGetApplicationName(), "Filter the Browser using the Value in the Current Selected Cell", "")
+			Call RBNControlSetIconsIdx(nCtrlIdx, CONTROL_SIZE_SMALL, MI_IMG_TAB_FILTER_16, "")
+			Call RBNControlSetLeftMarginIdx(nCtrlIdx, 0)
+			Call RBNControlSetCustomMBXHandlerIdx(nCtrlIdx, "TABHFilterBrowserCurrentCell")
+		End If
+	End If
+	If DLGMSTAddGroupByColumn() Then
+		nCtrlIdx = RBNCntxtMenuInsertMenuItem(MenuId_BrowserShortcut, "brwsCntxtGroupByColumn", "Group by Current Column", "", 5)
+		If nCtrlIdx > 0 Then
+			Call RBNControlSetToolTipIdx(nCtrlIdx, PRGIGetApplicationName(), "Run a Group By Query on the Currently Selected Column", "")
+			Call RBNControlSetIconsIdx(nCtrlIdx, CONTROL_SIZE_SMALL, MI_IMG_TAB_FINDMAPSELECTION_16, "")
+			Call RBNControlSetLeftMarginIdx(nCtrlIdx, 0)
+			Call RBNControlSetCustomMBXHandlerIdx(nCtrlIdx, "TABHGroupByCurrentColumn")
+		End If
+	End If
+
+	If DLGMSTAddZoomToSelection() Then
+		nCtrlIdx = RBNCntxtMenuInsertMenuItem(MenuId_BrowserShortcut, "brwsZoomToSelection", "Zoom to Extent of Selection", "", 0)
+		If nCtrlIdx > 0 Then
+			Call RBNControlSetToolTipIdx(nCtrlIdx, PRGIGetApplicationName(), "Zoom to the Extent of the Selection in the Front Most Map", "")
+			Call RBNControlSetIconsIdx(nCtrlIdx, CONTROL_SIZE_SMALL, MI_IMG_MAP_ZOOMTOEXTENTSEL_16, "")
+			Call RBNControlSetLeftMarginIdx(nCtrlIdx, 0)
+			Call RBNControlSetCustomMBXHandlerIdx(nCtrlIdx, "MAPHZoomToSelectionInFrontMap")
+		End If
+	End If
+	If DLGMSTAddPanToSelection() Then
+		nCtrlIdx = RBNCntxtMenuInsertMenuItem(MenuId_BrowserShortcut, "brwsZoomToSelection", "Pan to the Selected Record", "", 1)
+		If nCtrlIdx > 0 Then
+			Call RBNControlSetToolTipIdx(nCtrlIdx, PRGIGetApplicationName(), "Pan to the Selected Record in the Front Most Map", "")
+			Call RBNControlSetIconsIdx(nCtrlIdx, CONTROL_SIZE_SMALL, MI_IMG_MAP_ZOOMTOENTIREMAP_16, "")
+			Call RBNControlSetLeftMarginIdx(nCtrlIdx, 0)
+			Call RBNControlSetCustomMBXHandlerIdx(nCtrlIdx, "MAPHPanToSelectionInFrontMap")
+		End If
+	End If
+
+	If DLGMSTAddZoomToSelection() Or DLGMSTAddPanToSelection() Then
+		nCtrlIdx	= RBNCntxtMenuInsertMenuItem(MenuId_BrowserShortcut, "brwsZoomToSeparator", "(-", "" , 2)
+	End If
+
+	'** A P P L I C A T I O N   C O N T E X T   M E N U ***************************************************************
+	nCtrlIdx	= RBNToolContextMenuAddMenuItem("cmdConfiguration", "Configuration...", "")
+	If nCtrlIdx > 0 Then
+		Call RBNControlSetToolTipIdx(nCtrlIdx, PRGIGetApplicationName(), "Configure " & PRGIGetApplicationName(), "")
+		Call RBNControlSetIconsIdx(nCtrlIdx, CONTROL_SIZE_SMALL, MI_IMG_APP_OPTSYSTEMSETTINGS_16, "")
+		Call RBNControlSetLeftMarginIdx(nCtrlIdx, 0)
+		Call RBNControlSetCustomMBXHandlerIdx(nCtrlIdx, "MENUConfiguration")
+	End If
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "MENUBuildRibbonInterface")
+	Call ERRShow()
+
+End Sub
+
+'****************************************
+'**   Created by Peter Horsbøll Møller, Precisely
+'**   Ending MapBasic application
+'****************************************
+Sub EndProgram
+
+OnError GoTo ErrorOccured
+
+	End Program
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "EndProgram")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub EndHandler
+
+OnError GoTo ErrorOccured
+
+	Call RBNEndHandler
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "EndHandler")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter HorsbÃ¸ll MÃ¸ller, Pitney Bowes Software
+'Parameters:
+'
+'**********************************************************************************************''
+Sub MENUConfiguration
+
+OnError GoTo ErrorOccured
+
+	If DLGMSTConfiguration() Then
+		Call DLGFUWCWriteConfigFile()
+		Call DLGMSTWriteConfigFile()
+	End If
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "MENUConfiguration")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub MENUSearchWildcard
+
+OnError GoTo ErrorOccured
+
+	If DLGFindUsingWildcard() Then
+
+	End If
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "MENUSearchWildcard")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub MENUSearchAllColumns
+
+Dim	sTab, sCol, sCmd, sCond, sInput As String,
+	nWID, nMID, nCol, nType, nNumRecords As Integer
+
+OnError GoTo ErrorOccured
+
+	If NumTables() = 0 Then
+		Call RBNNotificationShow(PRGIGetApplicationName(), "Make sure to open a searchable table first!", Notify_Error, 20000)
+		Exit Sub
+	End If
+
+	nWID = FrontWindow()
+'	If nWID = 0 Then
+'		Exit Sub
+'	End If
+'	If Not WindowInfo(nWID, WIN_INFO_TYPE) = WIN_BROWSER Then
+'		Exit Sub
+'	End If
+
+	If Not DLGSearchAllColumns() Then'
+		Exit Sub
+	End If
+
+	sTab = DLGSACGetTableName()
+
+	sInput = DLGSACGetSearchValue()
+	If InStr(1, sInput, "%") = 0 Then
+		sInput = "%" & sInput & "%"
+	End If
+
+	For nCol = 1 To TableInfo(sTab, TAB_INFO_NCOLS)
+		sCol		= ColumnInfo(sTab, "COL" & nCol, COL_INFO_NAME)
+		sCond	= ""
+		nType	= ColumnInfo(sTab, sCol, COL_INFO_TYPE)
+		If DLGSACSearchColumnType(nType) Then
+			Do Case nType
+				Case COL_TYPE_CHAR
+					sCond = sCol
+				Case COL_TYPE_INTEGER, COL_TYPE_SMALLINT, COL_TYPE_LARGEINT
+					sCond = "Str$(" & sCol & ")"
+				Case COL_TYPE_DECIMAL, COL_TYPE_FLOAT
+					sCond = "Str$(" & sCol & ")"
+				Case COL_TYPE_DATE, COL_TYPE_DATETIME, COL_TYPE_TIME
+					sCond = "Str$(" & sCol & ")"
+			End Case
+		End If
+
+		If sCond <> "" Then
+			sCond = "(" & sCond & " Like " & Chr$(34) & sInput & Chr$(34) & ")"
+			If sCmd = "" Then
+				sCmd =  sCond
+			Else
+				sCmd = sCmd & " Or " & sCond
+			End If
+		End If
+	Next
+
+	If DLGSACFilterBrowser() Then
+		sCmd = "Set Browse Window " & nWID
+			& " Filter Where " & sCmd
+		Call DEBUGPrint("Filter: " & sCmd)
+		Run Command sCmd
+		nNumRecords	= TableInfo(WindowInfo(nWID, WIN_INFO_TABLE), TAB_INFO_NROWS)
+		Call DEBUGPrint("Browser Filtered!")
+
+		Call RBNNotificationShow(PRGIGetApplicationName(), "Filtered table '" & sTab & ". Found " & FormatNumber$(nNumRecords) & " records", Notify_Info, 10000)
+	Else
+		sCmd = "Select * From " & sTab
+			& " where " & sCmd
+			& " Into Selection"
+		Call DEBUGPrint("Select: " & sCmd)
+		Run Command sCmd
+		nNumRecords	= SelectionInfo(SEL_INFO_NROWS)
+		Call DEBUGPrint("Query finished. Found " & FormatNumber$(nNumRecords) & " records!")
+
+		If nNumRecords > 0 Then
+			If DLGSACBrowseResult() Then
+				Browse * From Selection
+			End If
+			If DLGSACAddResultToMap() Then
+				nMID = MAPFrontMostWindow()
+				If nMID = 0 Then
+					Map From Selection
+				Else
+					Add Map Window nMID Auto
+						Layer Selection
+				End If
+			End If
+			Call RBNNotificationShow(PRGIGetApplicationName(), "Searched table '" & sTab & ". Found " & FormatNumber$(nNumRecords) & " records", Notify_Info, 10000)
+		Else
+			Call RBNNotificationShow(PRGIGetApplicationName(), "Searched table '" & sTab & ". Found no matching records", Notify_Info, 10000)
+		End If
+
+	End If
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "MENUSearchAllColumns")
+	Call ERRShow()
+
+End Sub
+

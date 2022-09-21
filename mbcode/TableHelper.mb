@@ -1,0 +1,309 @@
+'*******************************************************************************
+'** 	Created By Peter Horsbøll Møller, Pitney Bowes Software
+'** 	Program:	WindowHelper
+'** 	Modul:
+'**
+'*******************************************************************************
+
+'-------------------------------------
+Include "MapBasic.def"
+Include "Icons.def"
+Include "Menu.def"
+'**default constants...
+Include "Library\Defaults.def"
+
+'-------------------------------------
+Include "Library\COLUMNLib.def"
+Include "Library\DEBUGLib.def"
+Include "Library\ERRORLib.def"
+Include "Library\RIBBONLib.def"
+Include "Library\TABLELib.def"
+
+Include "TableHelper.def"
+
+Dim	msTextEditor As String,
+	mbIgnoreTopLeftCell As Logical
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function TABHGetSelectionValue( ByVal nRowID As Integer
+						, ByVal sColName As String
+						) As String
+
+Dim	sValue, sQuery As String,
+	aCol As Alias
+
+OnError GoTo ErrorOccured
+
+TABHGetSelectionValue = ""
+
+	sValue	= ""
+	If SelectionInfo(SEL_INFO_NROWS) >= nRowID Then
+		sQuery = SelectionInfo(SEL_INFO_SELNAME)
+		If COLExists(sQuery, sColName) Then
+			Fetch Rec nRowID From Selection
+
+			aCol	= sQuery & "." & sColName
+			Do Case ColumnInfo(sQuery, sColName, COL_INFO_TYPE)
+				Case COL_TYPE_CHAR
+					sValue = aCol
+				Case COL_TYPE_INTEGER, COL_TYPE_SMALLINT, COL_TYPE_LOGICAL, COL_TYPE_LARGEINT
+					sValue = Str$(aCol)
+				Case COL_TYPE_FLOAT, COL_TYPE_DECIMAL
+					sValue = FormatNumber$(aCol)
+				Case COL_TYPE_DATE
+					If aCol Then
+						sValue = FormatDate$(aCol)
+					End If
+				Case COL_TYPE_TIME
+					If aCol Then
+						sValue = FormatTime$(acol, "HH:mm:ss")
+					End If
+				Case COL_TYPE_DATETIME
+					If aCol Then
+						sValue = FormatDate$(aCol) & " " & FormatTime$(GetTime(acol), "HH:mm:ss")
+					End If
+			End Case
+		End If
+		Close Table sQuery
+	End If
+
+TABHGetSelectionValue = sValue
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "TABHGetSelectionValue: " & nRowID & " Column: " & sColName)
+	Call ERRPrint()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function TABHCGetColumnValue(	  ByVal sTab As String
+						, ByVal sCol As String
+						, ByVal nRowID As Integer
+						, ByVal bReturnError As Logical
+						) As String
+
+Dim	sValue As String,
+	aCol As Alias,
+	bCloseTable As Logical
+
+OnError GoTo ErrorOccured
+
+TABHCGetColumnValue = ""
+
+	If sTab = "Selection" Then
+		If SelectionInfo(SEL_INFO_NROWS) > 0 Then
+			sTab		= SelectionInfo(SEL_INFO_SELNAME)
+			bCloseTable	= TRUE
+		Else
+			If bReturnError Then
+				TABHCGetColumnValue = "Error: Selection holds no records"
+			End If
+			Exit Function
+		End If
+	End If
+	If NOT TABIsOpen(sTab) Then
+		If bReturnError Then
+			TABHCGetColumnValue = "Error: Table isn't open '" & sTab & "'"
+		End If
+		Exit Function
+	ElseIf NOT COLExists(sTab, sCol) Then
+		If bReturnError Then
+			TABHCGetColumnValue = "Error: Table '" & sTab & "' hasn't this column '" & sCol & "'"
+		End If
+		Exit Function
+	ElseIf nRowID > TableInfo(sTab, TAB_INFO_NROWS) Then
+		If bReturnError Then
+			TABHCGetColumnValue = "Error: RowID '" & FormatNumber$(nRowID) & "' is higher than number of records '" & FormatNumber$(TableInfo(sTab, TAB_INFO_NROWS)) & "'"
+		End If
+		Exit Function
+	End If
+
+	If nRowID > 0 Then
+		Fetch Rec nRowID From sTab
+	ElseIf EOT(sTab) Then
+		If bReturnError Then
+			TABHCGetColumnValue = "The cursor of the table '" & sTab & "' is at EOT"
+		End If
+		Exit Function
+	End If
+
+	aCol = sTab & "." & sCol
+
+	Do Case ColumnInfo(sTab, sCol, COL_INFO_TYPE)
+		Case COL_TYPE_CHAR
+			sValue = aCol
+		Case COL_TYPE_INTEGER, COL_TYPE_SMALLINT, COL_TYPE_LOGICAL, COL_TYPE_LARGEINT
+			sValue = Str$(aCol)
+		Case COL_TYPE_FLOAT, COL_TYPE_DECIMAL
+			sValue = FormatNumber$(aCol)
+		Case COL_TYPE_DATE
+			If aCol Then
+				sValue = FormatDate$(aCol)
+			End If
+		Case COL_TYPE_TIME
+			If aCol Then
+				sValue = FormatTime$(acol, "HH:mm:ss")
+			End If
+		Case COL_TYPE_DATETIME
+			If aCol Then
+				sValue = FormatDate$(aCol) & " " & FormatTime$(GetTime(acol), "HH:mm:ss")
+			End If
+	End Case
+
+	If bCloseTable Then
+		Close Table sTab
+	End If
+	TABHCGetColumnValue = sValue
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "TABHCGetColumnValue")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes Software
+'Parameters:
+'
+'**********************************************************************************************''
+Sub TABHFilterBrowserCurrentCell
+
+OnError GoTo ErrorOccured
+
+Dim	nWID, nRow, nCol As Integer,
+	sTab, sCol, sCmd As String,
+	sValue As String,
+	fValue As Float,
+	nValue As Integer
+
+	nWID = FrontWindow()
+	nRow = BrowserInfo(nWID, BROWSER_INFO_CURRENT_ROW)
+	nCol = BrowserInfo(nWID, BROWSER_INFO_CURRENT_COLUMN)
+	If nRow = 1 AND nCol = 0 Then
+ 		Call RBNNotificationShow("WindowHelper", "Top left cell is being ignored!", Notify_Error, 5000)
+		Exit Sub
+	End If
+
+	sTab	= WindowInfo(nWID, WIN_INFO_TABLE)
+	sCol	= ColumnInfo(sTab, "COL" & (nCol + 1), COL_INFO_NAME)
+
+	Do Case ColumnInfo(sTab, sCol, COL_INFO_TYPE)
+		Case COL_TYPE_CHAR
+			sValue	= BrowserInfo(nWID, BROWSER_INFO_CURRENT_CELL_VALUE)
+			sCmd		= "Where (" & sCol & " = " & Chr$(34) & sValue & Chr$(34) & ")"
+
+		Case COL_TYPE_DECIMAL, COL_TYPE_FLOAT
+			fValue	= BrowserInfo(nWID, BROWSER_INFO_CURRENT_CELL_VALUE)
+			sCmd		= "Where (" & sCol & " = " & DeformatNumber$(Format$(fValue, "#.##########")) & ")"
+
+		Case COL_TYPE_INTEGER, COL_TYPE_SMALLINT
+			nValue	= BrowserInfo(nWID, BROWSER_INFO_CURRENT_CELL_VALUE)
+			sCmd		= "Where (" & sCol & " = " & Str$(nValue) & ")"
+
+  		Case Else
+  			Call RBNNotificationShow("WindowHelper", "Only character and numeric columns are supported", Notify_Error, 5000)
+  			Exit Sub
+
+  	End Case
+
+	sCmd = "Set Browse"
+			& " Window " & nWID
+			& " Filter " & sCmd
+	Call DEBUGPrint(sCmd)
+	Run Command sCmd
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "TABHFilterBrowserCurrentCell")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes Software
+'Parameters:
+'
+'**********************************************************************************************''
+Sub TABHGroupByCurrentColumn
+
+OnError GoTo ErrorOccured
+
+Dim	nWID, nRow, nCol As Integer,
+	sTab, sCol, sCmd As String
+
+	nWID = FrontWindow()
+	nRow = BrowserInfo(nWID, BROWSER_INFO_CURRENT_ROW)
+	nCol = BrowserInfo(nWID, BROWSER_INFO_CURRENT_COLUMN)
+	If nRow = 1 AND nCol = 0 Then
+ 		Call RBNNotificationShow("WindowHelper", "Top left cell is being ignored!", Notify_Error, 5000)
+		Exit Sub
+	End If
+
+	sTab	= WindowInfo(nWID, WIN_INFO_TABLE)
+	sCol	= ColumnInfo(sTab, "COL" & (nCol + 1), COL_INFO_NAME)
+
+	sCmd = "Select " & sCol & ", Count(*) " & Chr$(34) & "NumRecords" & Chr$(34)
+			& " From " & sTab
+			& " Group By " & sCol
+			& " Order By " & sCol
+			& " Into " & sTab & "_GrpOn_" & sCol & " NoSelect"
+	Call DEBUGPrint(sCmd)
+	Run Command sCmd
+	Browse * From sTab & "_GrpOn_" & sCol Floating
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "TABHGroupByCurrentColumn")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Pitney Bowes Software
+'Parameters:
+'
+'**********************************************************************************************''
+Sub TABHSetIgnoreTopLeftCell(ByVal bValue As Logical)
+
+OnError GoTo ErrorOccured
+
+	mbIgnoreTopLeftCell	= bValue
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "TABHSetTextEditor")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+Function TABHGetIgnoreTopLeftCell() As Logical
+
+OnError GoTo ErrorOccured
+
+	TABHGetIgnoreTopLeftCell = mbIgnoreTopLeftCell
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "TABHGetIgnoreTopLeftCell")
+	Call ERRShow()
+
+End Function

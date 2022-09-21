@@ -1,0 +1,13 @@
+﻿Declare Function DLGSearchAllColumns() As Logical
+
+Declare Sub DLGSACReadConfigFile(ByVal sFile As String)
+Declare Sub DLGSACWriteConfigFile(ByVal sFile As String)
+
+Declare Function DLGSACGetSearchValue() As String
+Declare Function DLGSACGetTableName() As String
+
+Declare Function DLGSACSearchColumnType( ByVal nColumnType As Integer) As Logical
+
+Declare Function DLGSACBrowseResult() As Logical
+Declare Function DLGSACFilterBrowser() As Logical
+Declare Function DLGSACAddResultToMap() As Logical

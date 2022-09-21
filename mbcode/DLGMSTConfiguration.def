@@ -1,0 +1,11 @@
+﻿Declare Function DLGMSTConfiguration() As Logical
+
+Declare Function DLGMSTAddFilterUsingCellValue() As Logical
+Declare Function DLGMSTAddGroupByColumn() As Logical
+Declare Function DLGMSTAddZoomToSelection() As Logical
+Declare Function DLGMSTAddPanToSelection() As Logical
+
+Declare Sub DLGMSTSetConfigFile(ByVal sFile As String)
+Declare Function DLGMSTGetConfigFile() As String
+Declare Sub DLGMSTWriteConfigFile()
+Declare Sub DLGMSTReadConfigFile()

@@ -1,0 +1,504 @@
+﻿'*******************************************************************************
+'** 	Created By Peter Horsbøll Møller, Precisely
+'** 	Program:
+'** 	Modul:
+'**
+'*******************************************************************************
+
+'-------------------------------------
+Include "MapBasic.def"
+Include "Icons.def"
+Include "Menu.def"
+'**default constants...
+Include "Library\Defaults.def"
+
+'-------------------------------------
+Include "Library\ARRAYLib.def"
+Include "Library\CONFIGFileLib.def"
+Include "Library\DEBUGLib.def"
+Include "Library\ERRORLib.def"
+Include "Library\TABLELib.def"
+
+Include "DLGSearchAllColumns.def"
+
+Define	MAX_COLUMN_TYPE	COL_TYPE_LARGEINT
+
+Define	CTRL_LST_TABLES 			100
+Define	CTRL_CHK_TABLE_FROM_BROWSER	200
+Define	CTRL_TXT_SEARCH_FOR 		300
+
+Define	CTRL_CHK_COL_TYPE_CHAR		400 + COL_TYPE_CHAR
+Define	CTRL_CHK_COL_TYPE_DECIMAL	400 + COL_TYPE_DECIMAL
+Define	CTRL_CHK_COL_TYPE_INTEGER	400 + COL_TYPE_INTEGER
+Define	CTRL_CHK_COL_TYPE_SMALLINT	400 + COL_TYPE_SMALLINT
+Define	CTRL_CHK_COL_TYPE_DATE		400 + COL_TYPE_DATE
+'Define	CTRL_CHK_COL_TYPE_LOGICAL	400 + COL_TYPE_LOGICAL
+'Define	CTRL_CHK_COL_TYPE_GRAPHIC	400 + COL_TYPE_GRAPHIC
+Define	CTRL_CHK_COL_TYPE_FLOAT		400 + COL_TYPE_FLOAT
+Define	CTRL_CHK_COL_TYPE_TIME		400 + COL_TYPE_TIME
+Define 	CTRL_CHK_COL_TYPE_DATETIME	400 + COL_TYPE_DATETIME
+Define 	CTRL_CHK_COL_TYPE_LARGEINT	400 + COL_TYPE_LARGEINT
+
+Define	CTRL_CHK_ADD_TO_MAP			510
+Define	CTRL_CHK_BROWSE			520
+Define	CTRL_CHK_FILTER			530
+
+Declare Sub DLGSAC_HandlerOnLoad
+Declare Sub DLGSAC_HandlerActiveBrowserClicked
+Declare Sub DLGSAC_HandlerFilterBrowserClicked
+Declare Sub DLGSAC_HandlerOKClicked
+
+Dim	marrTables(), msSearchValue, msTableName As String,
+	marrSearchColumnType(MAX_COLUMN_TYPE), mbBrowseResult, mbFilterBrowser, mbAddResultToMap As Logical,
+	mnUsedTimes As Integer
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGSearchAllColumns() As Logical
+
+OnError GoTo ErrorOccured
+
+DLGSearchAllColumns = FALSE
+
+	ReDim marrTables(0)
+	If TABGetListOfNames(TAB_USE_ALL_BUT_IMAGES, marrTables()) = 0 Then
+		Note "Please open at least one table to search!"
+		Exit Function
+	End If
+
+	Dialog
+		Title "Search All Columns"
+		Calling DLGSAC_HandlerOnLoad
+
+		Control StaticText	Position 5,5
+			Title "Table"
+		Control PopUpMenu	Position 5,15		ID CTRL_LST_TABLES
+			Width 200
+			Title From Variable marrTables
+			Value Maximum(1, ARRAYFindValueString(marrTables(), DLGSACGetTableName()))
+
+		Control CheckBox	Position 5,30		ID CTRL_CHK_TABLE_FROM_BROWSER
+			Title "Search in Active Browser Window"
+			Calling DLGSAC_HandlerActiveBrowserClicked
+		Control CheckBox	Position 5,45		ID CTRL_CHK_FILTER
+			Title "Filter Active Browser Window using Condition"
+			Value FALSE	'DLGSACFilterBrowser()
+			Calling DLGSAC_HandlerFilterBrowserClicked
+			Hide		'**Disabled and hidden as you can't use Or when combining filters across multiple columns in a browser
+
+		Control StaticText	Position 5,60
+			Title "Search for, use % or _ as wildcard"
+		Control EditText	Position 5,70		ID CTRL_TXT_SEARCH_FOR
+			Width 200
+			Value IIf(DLGSACGetSearchValue()="", "%", DLGSACGetSearchValue())
+
+		'-------------------------------------------------------------
+		Control GroupBox	Position 5,85
+			Width 200		Height 80
+			Title "Search Columns of Type"
+
+		'****Char
+		Control CheckBox	Position 15,100		ID CTRL_CHK_COL_TYPE_CHAR
+			Title "Char"
+			Value DLGSACSearchColumnType(COL_TYPE_CHAR)
+
+		'****Whole Numbers
+		Control CheckBox	Position 15,115	ID CTRL_CHK_COL_TYPE_SMALLINT
+			Title "SmallInt"
+			Value DLGSACSearchColumnType(COL_TYPE_SMALLINT)
+		Control CheckBox	Position 70,115	ID CTRL_CHK_COL_TYPE_INTEGER
+			Title "Integer"
+			Value DLGSACSearchColumnType(COL_TYPE_INTEGER)
+		Control CheckBox	Position 125,115	ID CTRL_CHK_COL_TYPE_LARGEINT
+			Title "LargeInt"
+			Value DLGSACSearchColumnType(COL_TYPE_LARGEINT)
+
+		'****Floating Numbers
+		Control CheckBox	Position 15,130	ID CTRL_CHK_COL_TYPE_FLOAT
+			Title "Float"
+			Value DLGSACSearchColumnType(COL_TYPE_FLOAT)
+		Control CheckBox	Position 70,130	ID CTRL_CHK_COL_TYPE_DECIMAL
+			Title "Decimal"
+			Value DLGSACSearchColumnType(COL_TYPE_DECIMAL)
+
+		'****Date/Time
+		Control CheckBox	Position 15,145	ID CTRL_CHK_COL_TYPE_DATE
+			Title "Date"
+			Value DLGSACSearchColumnType(COL_TYPE_DATE)
+		Control CheckBox	Position 70,145	ID CTRL_CHK_COL_TYPE_TIME
+			Title "Time"
+			Value DLGSACSearchColumnType(COL_TYPE_TIME)
+		Control CheckBox	Position 125,145	ID CTRL_CHK_COL_TYPE_DATETIME
+			Title "DateTime"
+			Value DLGSACSearchColumnType(COL_TYPE_DATETIME)
+
+		'-------------------------------------------------------------
+		Control OKButton		Position 120,170
+			Width 40
+			Title "Search"
+			Calling DLGSAC_HandlerOKClicked
+		Control CancelButton	Position 165,170
+			Width 40
+
+		'-------------------------------------------------------------
+		Control CheckBox	Position 5,170		ID CTRL_CHK_ADD_TO_MAP
+			Title "Add Result to a Map"
+			Value DLGSACAddResultToMap()
+		Control CheckBox	Position 5,185	ID CTRL_CHK_BROWSE
+			Title "Browse Result"
+			Value DLGSACBrowseResult()
+
+	If not CommandInfo(CMD_INFO_DLG_OK) Then
+		Exit Function
+	End If
+
+	mnUsedTimes = mnUsedTimes + 1
+
+DLGSearchAllColumns = TRUE
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGSearchAllColumns")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGSAC_HandlerOnLoad
+
+Dim	nWID As Integer,
+	bFrontWindowIsBrowser As Logical
+
+OnError GoTo ErrorOccured
+
+	bFrontWindowIsBrowser	= FALSE
+	nWID = FrontWindow()
+	If nWID > 0 Then
+		If WindowInfo(nWID, WIN_INFO_TYPE) = WIN_BROWSER Then
+			bFrontWindowIsBrowser	= TRUE
+		End If
+	End If
+
+	If bFrontWindowIsBrowser Then
+		Alter Control CTRL_CHK_TABLE_FROM_BROWSER Enable
+		Alter Control CTRL_CHK_FILTER Enable
+	Else
+		Alter Control CTRL_CHK_TABLE_FROM_BROWSER Disable
+		Alter Control CTRL_CHK_FILTER Disable
+		Alter Control CTRL_CHK_FILTER Value FALSE
+	End If
+
+	If mnUsedTimes = 0 Then
+		Alter Control CTRL_CHK_COL_TYPE_CHAR Value TRUE
+	End If
+
+	Call DLGSAC_HandlerActiveBrowserClicked
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGSAC_HandlerOnLoad")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGSAC_HandlerOKClicked
+
+Dim	bSearchSomeColumn As Logical
+
+OnError GoTo ErrorOccured
+
+	If ReadControlValue(CTRL_TXT_SEARCH_FOR) = "" Then
+		Note "Please enter a value to search for!"
+		Alter Control CTRL_TXT_SEARCH_FOR Active
+		Exit Sub
+	End If
+
+	msSearchValue	= ReadControlValue(CTRL_TXT_SEARCH_FOR)
+	msTableName	= marrTables(ReadControlValue(CTRL_LST_TABLES))
+
+	mbAddResultToMap	= ReadControlValue(CTRL_CHK_ADD_TO_MAP)
+	mbFilterBrowser	= ReadControlValue(CTRL_CHK_FILTER)
+	mbBrowseResult		= ReadControlValue(CTRL_CHK_BROWSE)
+
+	marrSearchColumnType(COL_TYPE_CHAR)	= ReadControlValue(CTRL_CHK_COL_TYPE_CHAR)
+	bSearchSomeColumn	= IIf(DLGSACSearchColumnType(COL_TYPE_CHAR), TRUE, bSearchSomeColumn)
+
+	marrSearchColumnType(COL_TYPE_SMALLINT)	= ReadControlValue(CTRL_CHK_COL_TYPE_SMALLINT)
+	bSearchSomeColumn	= IIf(DLGSACSearchColumnType(COL_TYPE_SMALLINT), TRUE, bSearchSomeColumn)
+	marrSearchColumnType(COL_TYPE_INTEGER)	= ReadControlValue(CTRL_CHK_COL_TYPE_INTEGER)
+	bSearchSomeColumn	= IIf(DLGSACSearchColumnType(COL_TYPE_INTEGER), TRUE, bSearchSomeColumn)
+	marrSearchColumnType(COL_TYPE_LARGEINT)	= ReadControlValue(CTRL_CHK_COL_TYPE_LARGEINT)
+	bSearchSomeColumn	= IIf(DLGSACSearchColumnType(COL_TYPE_LARGEINT), TRUE, bSearchSomeColumn)
+
+	marrSearchColumnType(COL_TYPE_FLOAT)	= ReadControlValue(CTRL_CHK_COL_TYPE_FLOAT)
+	bSearchSomeColumn	= IIf(DLGSACSearchColumnType(COL_TYPE_FLOAT), TRUE, bSearchSomeColumn)
+	marrSearchColumnType(COL_TYPE_DECIMAL)	= ReadControlValue(CTRL_CHK_COL_TYPE_DECIMAL)
+	bSearchSomeColumn	= IIf(DLGSACSearchColumnType(COL_TYPE_DECIMAL), TRUE, bSearchSomeColumn)
+
+	marrSearchColumnType(COL_TYPE_DATE)	= ReadControlValue(CTRL_CHK_COL_TYPE_DATE)
+	bSearchSomeColumn	= IIf(DLGSACSearchColumnType(COL_TYPE_DATE), TRUE, bSearchSomeColumn)
+	marrSearchColumnType(COL_TYPE_TIME)	= ReadControlValue(CTRL_CHK_COL_TYPE_TIME)
+	bSearchSomeColumn	= IIf(DLGSACSearchColumnType(COL_TYPE_TIME), TRUE, bSearchSomeColumn)
+	marrSearchColumnType(COL_TYPE_DATETIME)	= ReadControlValue(CTRL_CHK_COL_TYPE_DATETIME)
+	bSearchSomeColumn	= IIf(DLGSACSearchColumnType(COL_TYPE_DATETIME), TRUE, bSearchSomeColumn)
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGSAC_HandlerOKClicked")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGSAC_HandlerActiveBrowserClicked
+
+Dim	sTab As String,
+	nWID As Integer
+
+OnError GoTo ErrorOccured
+
+	If ReadControlValue(CTRL_CHK_TABLE_FROM_BROWSER) Then
+		nWID = FrontWindow()
+		If nWID = 0 Then
+			Alter Control CTRL_CHK_TABLE_FROM_BROWSER Value FALSE
+			Alter Control CTRL_CHK_TABLE_FROM_BROWSER Disable
+			Call DLGSAC_HandlerActiveBrowserClicked
+			Exit Sub
+		ElseIf Not WindowInfo(nWID, WIN_INFO_TYPE) = WIN_BROWSER Then
+			Alter Control CTRL_CHK_TABLE_FROM_BROWSER Value FALSE
+			Alter Control CTRL_CHK_TABLE_FROM_BROWSER Disable
+			Call DLGSAC_HandlerActiveBrowserClicked
+			Exit Sub
+		End If
+
+		Alter Control CTRL_CHK_FILTER		Enable
+		Alter Control CTRL_CHK_ADD_TO_MAP	Value FALSE
+
+		Alter Control CTRL_LST_TABLES		Disable
+		sTab	= WindowInfo(nWID, WIN_INFO_TABLE)
+		Alter Control CTRL_LST_TABLES Value ARRAYFindValueString(marrTables(), sTab)
+	Else
+		Alter Control CTRL_CHK_FILTER		Disable
+		Alter Control CTRL_CHK_FILTER		Value FALSE
+
+		Alter Control CTRL_LST_TABLES		Enable
+	End If
+
+	Call DLGSAC_HandlerFilterBrowserClicked
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGSAC_HandlerActiveBrowserClicked")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGSAC_HandlerFilterBrowserClicked
+
+OnError GoTo ErrorOccured
+
+	If ReadControlValue(CTRL_CHK_FILTER) Then
+		Alter Control CTRL_CHK_BROWSE		Disable
+		Alter Control CTRL_CHK_BROWSE		Value FALSE
+		Alter Control CTRL_CHK_ADD_TO_MAP	Disable
+		Alter Control CTRL_CHK_ADD_TO_MAP	Value FALSE
+	Else
+		Alter Control CTRL_CHK_BROWSE		Enable
+		Alter Control CTRL_CHK_ADD_TO_MAP	Enable
+	End If
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGSAC_HandlerFilterBrowserClicked")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGSACReadConfigFile(ByVal sFile As String)
+
+OnError GoTo ErrorOccured
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGSACReadConfigFile")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGSACWriteConfigFile(ByVal sFile As String)
+
+OnError GoTo ErrorOccured
+
+'	Call CONFIGWriteKey(sFile, "SEARCHALLCOLUMNS", "TABLE", DLGSACGetTableName())
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGSACWriteConfigFile")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGSACGetSearchValue() As String
+
+OnError GoTo ErrorOccured
+
+	DLGSACGetSearchValue = msSearchValue
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGSACGetSearchValue")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGSACGetTableName() As String
+
+OnError GoTo ErrorOccured
+
+	DLGSACGetTableName = msTableName
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGSACGetTableName")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGSACSearchColumnType( ByVal nColumnType As Integer) As Logical
+
+OnError GoTo ErrorOccured
+
+DLGSACSearchColumnType = FALSE
+
+	If nColumnType > 0 And nColumnType <= MAX_COLUMN_TYPE Then
+		DLGSACSearchColumnType = marrSearchColumnType(nColumnType)
+	End If
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGSACSearchColumnType")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGSACBrowseResult() As Logical
+
+OnError GoTo ErrorOccured
+
+	DLGSACBrowseResult = mbBrowseResult
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGSACBrowseResult")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGSACFilterBrowser() As Logical
+
+OnError GoTo ErrorOccured
+
+	DLGSACFilterBrowser = mbFilterBrowser
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGSACFilterBrowser")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGSACAddResultToMap() As Logical
+
+OnError GoTo ErrorOccured
+
+	DLGSACAddResultToMap = mbAddResultToMap
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGSACAddResultToMap")
+	Call ERRShow()
+
+End Function

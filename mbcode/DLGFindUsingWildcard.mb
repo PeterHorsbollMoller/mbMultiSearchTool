@@ -1,0 +1,1624 @@
+'*******************************************************************************
+'** 	Created By Peter Horsbøll Møller, Precisely
+'** 	Program:
+'** 	Modul:
+'**
+'*******************************************************************************
+
+'-------------------------------------
+Include "MapBasic.def"
+Include "Icons.def"
+Include "Menu.def"
+'**default constants...
+Include "Library\Defaults.def"
+
+'-------------------------------------
+Include "Library\CONFIGFILELib.def"
+Include "Library\DBMSUtilityLib.def"
+Include "Library\DEBUGLib.def"
+Include "Library\ERRORLib.def"
+Include "Library\FILELib.def"
+Include "Library\MAPPERLib.def"
+Include "Library\STRINGLib.def"
+Include "Library\TABLELib.def"
+
+Include "DLGFindUsingWildcard.def"
+
+Define	CTRL_TXT_SEARCH_FOR				100
+Define	CTRL_LBL_SEARCH_FOR				110
+Define	CTRL_LST_RESULTS				200
+Define 	CTRL_LBL_NUM_RECORDS_FOUND		210
+Define 	CTRL_LBL_TOO_MANY_RECORDS_FOUND	220
+Define	CTRL_CHK_HIGHLIGHT_RECORD		300
+Define	CTRL_CMD_SHOW_ALL				400
+Define	CTRL_CHK_USE_ZOOM				500
+Define	CTRL_TXT_ZOOM_WIDTH				510
+
+Declare Sub DLGFUWCHandler_OnLoad
+Declare Sub DLGFUWCHandler_OKClicked
+Declare Sub DLGFUWCHandler_ShowAllClicked
+Declare Sub DLGFUWCHandler_ResultListClicked
+Declare Sub DLGFUWCHandler_UseZoomClicked
+
+Declare Function DLGFUWGetNumberOfMatchingRecords() As Integer
+
+Dim	msDBSchema, msDBTable, marrColumnToSearch(3), marrColumnToSearchTitle(3) As String,
+	msMITabFile, msColumnWithUniqueID As String,
+	marrSearchValue(3) As String,
+	marrColumnToSearchMethod(3) As Integer,
+	marrIsColumnToSearchWide(3) As Logical,
+	mnZoomWidth, mnMaximumMatchNumber As Integer,
+	msDSNFile, msUserName, msPassword As String,
+	mbUseZoom As Logical,
+	marrResults() As String,
+	mnConnection As Integer,
+	msConfigFile As String,
+	mnResultListWidth, mnResultListHeight As Integer
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGFindUsingWildcard() As Logical
+
+Dim	i As Integer
+
+OnError GoTo ErrorOccured
+
+DLGFindUsingWildcard = FALSE
+
+	If MAPFrontMostWindow() = 0 Then
+		Note "Please open a map window before using this function!"
+		Exit Function
+	End If
+
+	If DLGFUWCGetConfigFile() <> "" Then
+		Call DLGFUWCReadConfigFile()
+	End If
+
+	If DLGFUWCSearchDatabaseTable() Then
+		mnConnection = DBUOpenConnectionToFileDSN(DLGFUWCGetDSNFile(), DLGFUWCGetUserName(), DLGFUWCGetPassword())
+		If mnConnection = 0 Then
+			Note "Opening connection to database failed. Search not possible!"
+			Exit Function
+		End If
+	Else
+		If DLGFUWCGetMITable() = "" Then
+			Note "Please configure the Wildcard Search before using it!"
+			Exit Function
+		End If
+		If NOT TABIsOpen(DLGFUWCGetMITable()) Then
+			If not FileExists(DLGFUWCGetMITabFile()) Then
+				Note "The table to search doesn't exist: " & DLGFUWCGetMITabFile()
+				Exit Function
+			End If
+			Open Table DLGFUWCGetMITabFile() Interactive
+
+			If NOT TABIsOpen(DLGFUWCGetMITable()) Then
+				Note "Please open the table to search: " & DLGFUWCGetMITable()
+				Exit Function
+			End If
+		End If
+	End If
+
+	Dialog
+		Title "Wildcard Search"
+		Calling DLGFUWCHandler_OnLoad
+
+		Control StaticText
+			Position 5,5
+			Width (DLGFUWCGetResultListWidth() - 50)
+'			Title "Search for"
+			Title "Search for - use % and _ as wildcards"
+
+		'Search Controls
+		Control StaticText		ID CTRL_LBL_SEARCH_FOR + 1
+			Position 5,15
+			Width DLGFUWCGetSearchControlWidth(1)
+			Title DLGFUWCGetSearchControlTitle(1)
+		Control EditText		ID CTRL_TXT_SEARCH_FOR + 1
+			Position 5,25
+			Width DLGFUWCGetSearchControlWidth(1)
+			Value IIf(DLGFUWCGetSearchValue(1)="", DLGFUWCGetSearchMethodAsString(1), DLGFUWCGetSearchValue(1))
+
+		Control StaticText		ID CTRL_LBL_SEARCH_FOR + 2
+			Position DLGFUWCGetSearchControlPosition(2),15
+			Width DLGFUWCGetSearchControlWidth(2)
+			Title DLGFUWCGetSearchControlTitle(2)
+		Control EditText		ID CTRL_TXT_SEARCH_FOR + 2
+			Position DLGFUWCGetSearchControlPosition(2),25
+			Width DLGFUWCGetSearchControlWidth(2)
+			Value IIf(DLGFUWCGetSearchValue(2)="", DLGFUWCGetSearchMethodAsString(2), DLGFUWCGetSearchValue(2))
+
+		Control StaticText		ID CTRL_LBL_SEARCH_FOR + 3
+			Position DLGFUWCGetSearchControlPosition(3),15
+			Width DLGFUWCGetSearchControlWidth(3)
+			Title DLGFUWCGetSearchControlTitle(3)
+		Control EditText		ID CTRL_TXT_SEARCH_FOR + 3
+			Position DLGFUWCGetSearchControlPosition(3),25
+			Width DLGFUWCGetSearchControlWidth(3)
+			Value IIf(DLGFUWCGetSearchValue(3)="", DLGFUWCGetSearchMethodAsString(3), DLGFUWCGetSearchValue(3))
+
+		Control CheckBox		ID CTRL_CHK_HIGHLIGHT_RECORD
+			Position (DLGFUWCGetResultListWidth() - 40), 4
+			Title "Highlight"
+			Value TRUE
+
+		Control OKButton
+			Position (DLGFUWCGetResultListWidth() - 40), 15
+			Width 45	Height 24
+			Title "Search"
+			Calling DLGFUWCHandler_OKClicked
+
+		Control Listbox		ID CTRL_LST_RESULTS
+			Position 5,40
+			Width DLGFUWCGetResultListWidth()	Height DLGFUWCGetResultListHeight()
+			Calling DLGFUWCHandler_ResultListClicked
+
+		Control CheckBox		ID CTRL_CHK_USE_ZOOM
+			Position 5, (DLGFUWCGetResultListHeight() + 47)
+			Value DLGFUWCUseZoom()
+			Calling DLGFUWCHandler_UseZoomClicked
+			Title "Zoom, m"
+		Control EditText		ID CTRL_TXT_ZOOM_WIDTH
+			Position 60, (DLGFUWCGetResultListHeight() + 45)
+			Width 40
+			Value FormatNumber$(DLGFUWCGetZoomWidth())
+
+		Control StaticText		ID CTRL_LBL_NUM_RECORDS_FOUND
+			Position 5, (DLGFUWCGetResultListHeight() + 62)
+			Width (DLGFUWCGetResultListWidth() - 45)
+			Title "Matching records found: "
+			Hide
+		Control StaticText		ID CTRL_LBL_TOO_MANY_RECORDS_FOUND
+			Position 5, (DLGFUWCGetResultListHeight() + 72)
+			Width (DLGFUWCGetResultListWidth() - 45)
+			Title "Only the first 30000 matches are loaded!"
+			Hide
+
+		Control Button			ID CTRL_CMD_SHOW_ALL
+			Position (DLGFUWCGetResultListWidth() - 40), (DLGFUWCGetResultListHeight() + 45)
+			Width 45
+			Title "Show all"
+			Calling DLGFUWCHandler_ShowAllClicked
+		Control CancelButton
+			Position (DLGFUWCGetResultListWidth() - 40), (DLGFUWCGetResultListHeight() + 65)
+			Width 45
+			Title "Close"
+
+	Call TABClose("__FIND__RESULTS__SORTED__")
+	Call TABClose("__FIND__DBMS__RESULTS__")
+
+	If DLGFUWCGetConnection() > 0 Then
+		Server DLGFUWCGetConnection() Disconnect
+	End If
+
+DLGFindUsingWildcard = TRUE
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFindUsingWildcard")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCHandler_OnLoad
+
+Dim	nCtrl As Integer
+
+OnError GoTo ErrorOccured
+
+	If DLGFUWCGetMITable() = "" And DLGFUWCSearchDatabaseTable() Then
+		Alter Control CTRL_CHK_HIGHLIGHT_RECORD	Value FALSE
+		Alter Control CTRL_CHK_HIGHLIGHT_RECORD	Disable
+	ElseIf NOT TABIsOpen(DLGFUWCGetMITable()) Then
+		Alter Control CTRL_CHK_HIGHLIGHT_RECORD	Value FALSE
+		Alter Control CTRL_CHK_HIGHLIGHT_RECORD	Disable
+	End If
+
+	For nCtrl = 1 To 3
+		If DLGFUWCIsSearchControlVisible(nCtrl) Then
+			Alter Control CTRL_TXT_SEARCH_FOR + nCtrl Show
+			Alter Control CTRL_LBL_SEARCH_FOR + nCtrl Show
+		Else
+			Alter Control CTRL_TXT_SEARCH_FOR + nCtrl Hide
+			Alter Control CTRL_LBL_SEARCH_FOR + nCtrl Hide
+		End If
+	Next
+
+	Alter Control CTRL_CMD_SHOW_ALL Disable
+
+	Call DLGFUWCHandler_UseZoomClicked
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCHandler_OnLoad")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCHandler_OKClicked
+
+Dim	sValue, sCond, sCmd, sTab, sTabFile As String,
+	nNumRows, nNumMatchFound, i, nTime, nCond, nValuesGiven As Integer,
+	arrCol(3) As Alias
+
+OnError GoTo ErrorOccured
+
+	Dialog Preserve
+
+	Call TABClose("__FIND__RESULTS__SORTED__")
+	Call TABClose("__FIND__DBMS__RESULTS__")
+
+	nValuesGiven = 0
+	For nCond = 1 To DLGFUWCNumSearchControls()
+		sValue	= ReadControlValue(CTRL_TXT_SEARCH_FOR + nCond)
+		If sValue = "" Then
+			Call DLGFUWCSetSearchValue(nCond, "")
+			Alter Control (CTRL_TXT_SEARCH_FOR + nCond) Value DLGFUWCGetSearchMethodAsString(nCond)
+		ElseIf sValue In ("<=>", "<Like>") Then
+			Call DLGFUWCSetSearchValue(nCond, "")
+		Else
+			nValuesGiven = nValuesGiven + 1
+
+			If DLGFUWCGetColumnToSearchMethod(nCond) = SEARCH_TYPE_LIKE Then
+				If InStr(1, sValue, "%") = 0 Then
+					If InStr(1, sValue, "_") = 0 Then
+						sValue = "%" & sValue & "%"
+					End If
+				End If
+			End If
+			Call DLGFUWCSetSearchValue(nCond, sValue)
+			Alter Control (CTRL_TXT_SEARCH_FOR + nCond) Value DLGFUWCGetSearchValue(nCond)
+		End If
+	Next
+
+	If nValuesGiven = 0 Then
+		Note "Please enter a search value!"
+		Alter Control (CTRL_TXT_SEARCH_FOR + 1) Active
+		Exit Sub
+	End If
+
+
+	nTime	= Timer()
+
+	If DLGFUWCSearchDatabaseTable() Then
+'		nNumMatchFound = DLGFUWGetNumberOfMatchingRecords()
+'		If nNumMatchFound > DLGFUWCGetMaximumMatchNumber() Then
+'			Redim marrResults(0)
+'			Alter Control CTRL_TXT_SEARCH_FOR Active
+'			Note "Too many matches found. Please try to narrow down your search to fewer records!"
+'
+'			Alter Control CTRL_LBL_NUM_RECORDS_FOUND Title FormatNumber$(nNumMatchFound) & " records found in " & FormatNumber$((Timer() - nTime)) & " secs"
+'			Alter Control CTRL_LBL_NUM_RECORDS_FOUND Show
+'			Alter Control CTRL_LBL_TOO_MANY_RECORDS_FOUND Show
+'		Else
+'			sCond	= "Where (" & eye & DLGFUWCGetColumnToSearch() & eye & " Like '" & DLGFUWCGetSearchValue() & "')"
+'
+'			sTabFile	= PathToDirectory$(TempFileName$("")) & "__FIND__DBMS__RESULTS__.tab"
+'			sTab		= PathToTableName$(sTabFile)
+'
+'			Call DEBUGPrint("Opening Linked Table: " & sCond)
+'			nNumRows = DBUOpenLinkedTableCondition(DLGFUWCGetConnection(), DLGFUWCGetDBSchema(), DLGFUWCGetDBTable(), sCond, sTabFile)
+'
+'			Close Table sTab
+'			Open Table sTabFile Hide
+'
+'			sCmd		= "Select * From __FIND__DBMS__RESULTS__"
+'						& " Order By " & DLGFUWCGetColumnToSearch()
+'						& " Into __FIND__RESULTS__SORTED__ NoSelect Hide"
+'			Call DEBUGPrint("Local Order By Query: " & sCmd)
+'			Run Command sCmd
+'
+'			sTab		= "__FIND__RESULTS__SORTED__"
+'		End If
+	Else
+		For nCond = 1 To DLGFUWCNumSearchControls()
+			If DLGFUWCGetSearchValue(nCond) <> "" Then
+				If DLGFUWCGetColumnToSearchMethod(nCond) = SEARCH_TYPE_LIKE Then
+					If ColumnInfo(DLGFUWCGetMITable(), DLGFUWCGetColumnToSearch(nCond), COL_INFO_TYPE) = COL_TYPE_CHAR Then
+						sCond	= DLGFUWCGetColumnToSearch(nCond) & " Like " & eye & DLGFUWCGetSearchValue(nCond) & eye
+					Else
+						sCond	= "Str$(" & DLGFUWCGetColumnToSearch(nCond) & ") Like " & eye & DLGFUWCGetSearchValue(nCond) & eye
+					End If
+				Else
+					If ColumnInfo(DLGFUWCGetMITable(), DLGFUWCGetColumnToSearch(nCond), COL_INFO_TYPE) = COL_TYPE_CHAR Then
+						sCond	= DLGFUWCGetColumnToSearch(nCond) & " = " & eye & DLGFUWCGetSearchValue(nCond) & eye
+					Else
+						sCond	= DLGFUWCGetColumnToSearch(nCond) & " = " & DLGFUWCGetSearchValue(nCond)
+					End If
+				End If
+
+				If sCmd = "" Then
+					sCmd = sCond
+				Else
+					sCmd = sCmd & " And " & sCond
+				End If
+			End If
+		Next
+
+		sCmd		= "Select * From " & DLGFUWCGetMITable()
+					& " Where " & sCmd
+					& " Order By " & DLGFUWCGetColumnToSearch(1)
+					& " Into __FIND__RESULTS__SORTED__ NoSelect Hide"
+		Call DEBUGPrint("Local Query: " & sCmd)
+		Run Command sCmd
+
+		sTab		= "__FIND__RESULTS__SORTED__"
+		nNumRows	= TableInfo(sTab, TAB_INFO_NROWS)
+	End If
+
+	Call DEBUGPrint("Loaded " & nNumRows & " rows after " & (Timer() - nTime) & " secs")
+
+	ReDim arrCol(DLGFUWCNumSearchControls())
+	For nCond = 1 To DLGFUWCNumSearchControls()
+		arrCol(nCond)	= sTab & "." & DLGFUWCGetColumnToSearch(nCond)
+	Next
+
+	Alter Control CTRL_LBL_TOO_MANY_RECORDS_FOUND Hide
+
+	Redim marrResults(0)
+	If nNumRows = 0 Then
+'		Note "No records matched your condition!"
+'		Alter Control CTRL_CMD_SHOW_ALL Disable
+	ElseIf nNumRows > 30000 Then
+		Redim marrResults(30000)
+		Fetch First From sTab
+		Do Until EOT(sTab)
+			i = i + 1
+			For nCond = 1 To DLGFUWCNumSearchControls()
+				marrResults(i) = STRINGConcatenateWithSeparator(marrResults(i), arrCol(nCond), " | ")
+			Next
+			If i = 30000 Then
+				Exit Do
+			End If
+			Fetch Next From sTab
+		Loop
+
+		Alter Control CTRL_LBL_TOO_MANY_RECORDS_FOUND Show
+	Else
+		Redim marrResults(nNumRows)
+		Fetch First From sTab
+		Do Until EOT(sTab)
+			i = i + 1
+			For nCond = 1 To DLGFUWCNumSearchControls()
+				marrResults(i) = STRINGConcatenateWithSeparator(marrResults(i), arrCol(nCond), " | ")
+			Next
+			Fetch Next From sTab
+		Loop
+	End If
+
+	Alter Control CTRL_LST_RESULTS Title From Variable marrResults
+	Call DEBUGPrint("Added " & Ubound(marrResults) & " rows to dialog after " & (Timer() - nTime) & " secs")
+
+	If Ubound(marrResults) > 0 Then
+		Alter Control CTRL_CMD_SHOW_ALL Enable
+	End If
+
+	Alter Control CTRL_LBL_NUM_RECORDS_FOUND Title FormatNumber$(nNumRows) & " records found in " & FormatNumber$((Timer() - nTime)) & " secs"
+	Alter Control CTRL_LBL_NUM_RECORDS_FOUND Show
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCHandler_OKClicked")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGFUWGetNumberOfMatchingRecords() As Integer
+
+Dim	nNumRows As Integer,
+	sCmd, sCond, sTabFile, sTab As String
+
+OnError GoTo ErrorOccured
+
+DLGFUWGetNumberOfMatchingRecords = 0
+
+	If DLGFUWCSearchDatabaseTable() Then
+		sCond	= "Where (" & eye & DLGFUWCGetColumnToSearch(1) & eye & " Like '" & DLGFUWCGetSearchValue(1) & "')"
+
+		sTabFile	= PathToDirectory$(TempFileName$("")) & "__FIND__COUNT_RECS__.tab"
+		sTab		= PathToTableName$(sTabFile)
+
+		sCmd		= "Select Count(*) As NUMS__RECS From " & DBUGetDatabaseTableName(DLGFUWCGetConnection(), DLGFUWCGetDBSchema(), DLGFUWCGetDBTable())
+					& sCond
+
+		Call DEBUGPrint("Opening Linked Table: " & sCond)
+		nNumRows = DBUOpenLinkedQuery(DLGFUWCGetConnection(), sCmd, sTabFile)
+	Else
+		sCond	= " Where " & DLGFUWCGetColumnToSearch(1) & " Like " & eye & DLGFUWCGetSearchValue(1) & eye
+		sCmd		= "Select Count(*) " & eye & "NUMS__RECS" & eye & " From " & DLGFUWCGetMITable()
+					& sCond
+					& " Into __FIND__COUNT_RECS__ NoSelect Hide"
+		Call DEBUGPrint("Local Query: " & sCmd)
+		Run Command sCmd
+
+		nNumRows	= TableInfo("__FIND__COUNT_RECS__", TAB_INFO_NROWS)
+	End If
+
+	If nNumRows > 0 Then
+		Fetch First From __FIND__COUNT_RECS__
+		nNumRows	= __FIND__COUNT_RECS__.NUMS__RECS
+	Else
+		nNumRows	= 0
+	End If
+
+	Call TABClose("__FIND__COUNT_RECS__")
+
+DLGFUWGetNumberOfMatchingRecords = nNumRows
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWGetNumberOfMatchingRecords")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCHandler_ShowAllClicked
+
+Dim	sTab, sTabFile, sValue As String,
+	nMID, nCtrl As Integer
+
+OnError GoTo ErrorOccured
+
+	If NOT TABIsOpen("__FIND__RESULTS__SORTED__") Then
+		Note "No current search result to show!"
+		Exit Sub
+	End If
+
+	For nCtrl = 1 To DLGFUWCNumSearchControls()
+		sValue	= ReadControlValue(CTRL_TXT_SEARCH_FOR + nCtrl)
+		If Not sValue In ("<=>", "<Like>") Then
+			sTab		= STRINGConcatenateWithSeparator(sTab, sValue, " ")
+		End If
+	Next
+
+	sTab 	= STRINGReplace(sTab, "*", " ")
+	sTab 	= STRINGReplace(sTab, "%", " ")
+	sTab 	= STRINGReplace(sTab, "_", " ")
+	sTab 	= STRINGTrim(sTab)
+	sTab 	= STRINGReplace(sTab, "  ", " ")
+	sTab 	= STRINGReplace(sTab, "  ", " ")
+
+	sTabFile	= FileSaveAsDlg("", sTab, "TAB", "Please pick name and folder to save the current resultset")
+	If NOT sTabFile Then
+		Exit Sub
+	End If
+
+	Commit Table "__FIND__RESULTS__SORTED__" As sTabFile
+	Open Table sTabFile
+	sTab	= TableInfo(0, TAB_INFO_NAME)
+
+	nMID	= MAPFrontMostWindow()
+	If nMID > 0 Then
+		Add Map
+			Window nMID
+			Layer sTab
+	Else
+		Map From sTab
+		nMID = FrontWindow()
+	End If
+
+	Set Map
+		Window nMID
+		Zoom Entire Layer sTab
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCHandler_ShowAllClicked")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCHandler_ResultListClicked
+
+Dim	nNum, nTime, nMID, nZoom As Integer,
+	oFound As Object,
+	fX, fY As Float,
+	aID As Alias,
+	sID, sCmd As String,
+	bUseZoom As Logical
+
+OnError GoTo ErrorOccured
+
+	If CommandInfo(CMD_INFO_DLG_DBL) Then
+		'*The user double clicked a record - let's close down the dialog
+		Dialog Remove
+	Else
+		Dialog Preserve
+	End If
+
+	bUseZoom	= ReadControlValue(CTRL_CHK_USE_ZOOM)
+	Call DLGFUWCSetUseZoom(bUseZoom)
+	nZoom	= Val(DeformatNumber$(ReadControlValue(CTRL_TXT_ZOOM_WIDTH)))
+	Call DLGFUWCSetZoomWidth(nZoom)
+
+	nNum	= ReadControlValue(CTRL_LST_RESULTS)
+	If nNum = 0 Then
+		Exit Sub
+	End If
+
+	nTime	= Timer()
+
+	Fetch Rec nNum From __FIND__RESULTS__SORTED__
+
+	nMID	= MAPFrontMostWindow()
+	Set CoordSys Window nMID
+
+	oFound	= __FIND__RESULTS__SORTED__.OBJ
+	fX	= CentroidX(oFound)
+	fY	= CentroidY(oFound)
+'	aID	= "__FIND__RESULTS__SORTED__." & DLGFUWCGetColumnWithUniqueID()
+'	sID	= aID
+
+	Set Distance Units "m"
+
+	If DLGFUWCUseZoom() Then
+		If MapperInfo(nMID, MAPPER_INFO_ZOOM) <> DLGFUWCGetZoomWidth() Then
+			Set Map
+				Window nMID
+				Zoom DLGFUWCGetZoomWidth() Units "m"
+			Call DEBUGPrint("Changed the zoom of the map after " & (Timer() - nTime) & " secs")
+		End If
+	End If
+
+	If NOT MAPContainsEntireObject(nMID, oFound) Then
+		Set Map
+			Window nMID
+			Center (fX, fY)
+		Call DEBUGPrint("Changed the center of the map after " & (Timer() - nTime) & " secs")
+	End If
+
+	If ReadControlValue(CTRL_CHK_HIGHLIGHT_RECORD) Then
+		If DLGFUWCSearchDatabaseTable() Then
+			Select * From DLGFUWCGetMITable()
+				Where OBJ Within Buffer(CreatePoint(fX, fY), 8, 1, "m")
+				Into __WITHIN__BUFFER NoSelect Hide
+
+			If TableInfo(__WITHIN__BUFFER, TAB_INFO_NROWS) = 1 Then
+				sCmd	= "Select * From __WITHIN__BUFFER"
+				Call DEBUGPrint("Highlight Query for DB Table, 1 record: " & sCmd)
+				Run Command sCmd
+				Call DEBUGPrint("selected the record after " & (Timer() - nTime) & " secs")
+				Call TABClose("__WITHIN__BUFFER")
+			Else
+		'		sCmd	= "Select * From " & DLGFUWCGetMITable()
+				sCmd	= "Select * From __WITHIN__BUFFER"
+						& " Where " & DLGFUWCGetColumnWithUniqueID() & " = " & sID
+				Call DEBUGPrint("Highlight Query for DB Table, multiple records: " & sCmd)
+				Run Command sCmd
+				Call DEBUGPrint("selected the record after " & (Timer() - nTime) & " secs")
+				Call TABClose("__WITHIN__BUFFER")
+			End If
+		Else
+			Select * From __FIND__RESULTS__SORTED__
+				Where ROWID = nNum
+		End If
+	End If
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCHandler_ResultListClicked")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCHandler_UseZoomClicked
+
+OnError GoTo ErrorOccured
+
+	If ReadControlValue(CTRL_CHK_USE_ZOOM) Then
+		Alter Control CTRL_TXT_ZOOM_WIDTH Enable
+	Else
+		Alter Control CTRL_TXT_ZOOM_WIDTH Disable
+	End If
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCHandler_UseZoomClicked")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCSetResultListWidth(ByVal nWidth As Integer)
+
+OnError GoTo ErrorOccured
+
+	mnResultListWidth	= nWidth
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCSetResultListWidth")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+Function DLGFUWCGetResultListWidth() As Integer
+
+OnError GoTo ErrorOccured
+
+	If mnResultListWidth < 180 Then
+		mnResultListWidth = 180
+	ElseIf mnResultListWidth > 500 Then
+		mnResultListWidth = 500
+	End If
+
+	DLGFUWCGetResultListWidth = mnResultListWidth
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetResultListWidth")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCSetResultListHeight(ByVal nHeight As Integer)
+
+OnError GoTo ErrorOccured
+
+	mnResultListHeight	= nHeight
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCSetResultListHeight")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+Function DLGFUWCGetResultListHeight() As Integer
+
+OnError GoTo ErrorOccured
+
+	If mnResultListHeight < 100 Then
+		mnResultListHeight = 100
+	ElseIf mnResultListHeight > 500 Then
+		mnResultListHeight = 500
+	End If
+
+	DLGFUWCGetResultListHeight = mnResultListHeight
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetResultListHeight")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGFUWCGetSearchControlPosition(ByVal nCtrl As Integer) As Integer
+
+Dim	nWidth, nWide, nNarrow As Integer
+
+OnError GoTo ErrorOccured
+
+DLGFUWCGetSearchControlPosition = 5
+
+	nWidth	= (DLGFUWCGetResultListWidth() - 50) - ((DLGFUWCNumSearchControls() - 1) * 5)
+	nNarrow	= nWidth / 4
+	nWide	= nNarrow * 2
+	nWide	= nWide + (nWidth - (nNarrow + nNarrow + nWide))
+
+	Do Case nCtrl
+		Case 1
+			DLGFUWCGetSearchControlPosition = 5
+		Case 2
+			If DLGFUWCIsColumnToSearchWide(1) Then
+				DLGFUWCGetSearchControlPosition = 5 + nWide + 5
+			Else
+				DLGFUWCGetSearchControlPosition = 5 + nNarrow + 5
+			End If
+		Case 3
+			If DLGFUWCIsColumnToSearchWide(3) Then
+				DLGFUWCGetSearchControlPosition = 5 + nNarrow + 5 + nNarrow + 5
+			Else
+				DLGFUWCGetSearchControlPosition = 5 + nWide + 5 + nNarrow + 5
+			End If
+	End Case
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetSearchControlPosition")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGFUWCGetSearchControlWidth(ByVal nCtrl As Integer) As Integer
+
+Dim	nWidth, nWide, nNarrow As Integer
+
+OnError GoTo ErrorOccured
+
+	nWidth	= (DLGFUWCGetResultListWidth() - 50) - ((DLGFUWCNumSearchControls() - 1) * 5)
+	nNarrow	= nWidth / 4
+	nWide	= nNarrow * 2
+	nWide	= nWide + (nWidth - (nNarrow + nNarrow + nWide))
+
+	Do Case DLGFUWCNumSearchControls()
+		Case 1
+			DLGFUWCGetSearchControlWidth = nWidth
+		Case 2
+			If DLGFUWCIsColumnToSearchWide(nCtrl) Then
+				DLGFUWCGetSearchControlWidth = nWide + nNarrow
+			Else
+				DLGFUWCGetSearchControlWidth = nNarrow
+			End If
+		Case 3
+			If DLGFUWCIsColumnToSearchWide(nCtrl) Then
+				DLGFUWCGetSearchControlWidth = nWide
+			Else
+				DLGFUWCGetSearchControlWidth = nNarrow
+			End If
+	End Case
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetSearchControlWidth")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGFUWCGetSearchControlTitle(ByVal nCtrl As Integer) As String
+
+OnError GoTo ErrorOccured
+
+	DLGFUWCGetSearchControlTitle = DLGFUWCGetColumnToSearchTitle(nCtrl)
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetSearchControlTitle")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGFUWCIsSearchControlVisible(ByVal nCtrl As Integer) As Logical
+
+OnError GoTo ErrorOccured
+
+DLGFUWCIsSearchControlVisible = FALSE
+
+	If DLGFUWCGetColumnToSearch(nCtrl) Then
+		DLGFUWCIsSearchControlVisible = TRUE
+	End If
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCIsSearchControlVisible")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGFUWCNumSearchControls() As Integer
+
+OnError GoTo ErrorOccured
+
+DLGFUWCNumSearchControls = 1
+
+	If Not DLGFUWCGetColumnToSearch(3) = "" Then
+		DLGFUWCNumSearchControls = 3
+	ElseIf Not DLGFUWCGetColumnToSearch(2) = "" Then
+		DLGFUWCNumSearchControls = 2
+	End If
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCNumSearchControls")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCSetConfigFile(ByVal sFile As String)
+
+OnError GoTo ErrorOccured
+
+	msConfigFile	= sFile
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCSetConfigFile")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGFUWCGetConfigFile() As String
+
+OnError GoTo ErrorOccured
+
+	DLGFUWCGetConfigFile = msConfigFile
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetConfigFile")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCWriteConfigFile()
+
+Dim	nCols As Integer
+
+OnError GoTo ErrorOccured
+
+	If DLGFUWCGetConfigFile() = "" Then
+		Exit Sub
+	End If
+
+	Call CONFIGWriteKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "WIDTH", DLGFUWCGetResultListWidth())
+	Call CONFIGWriteKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "HEIGHT", DLGFUWCGetResultListHeight())
+
+	Call CONFIGWriteKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "SCHEMA_DATABASE", DLGFUWCGetDBSchema())
+	Call CONFIGWriteKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "TABLE_DATABASE", DLGFUWCGetDBTable())
+
+	For nCols = 1 To 3
+		Call CONFIGWriteKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "COLUMN_NAME" & nCols, DLGFUWCGetColumnToSearch(nCols))
+		Call CONFIGWriteKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "COLUMN_TITLE" & nCols, DLGFUWCGetColumnToSearchTitle(nCols))
+		Call CONFIGWriteKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "COLUMN_METHOD" & nCols, DLGFUWCGetColumnToSearchMethod(nCols))
+		Call CONFIGWriteKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "COLUMN_WIDE" & nCols, IIf(DLGFUWCIsColumnToSearchWide(nCols), "1", "0"))
+	Next
+
+	Call CONFIGWriteKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "TABFILE_MAPINFO", DLGFUWCGetMITabFile())
+	Call CONFIGWriteKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "COLUMN_UNIQUEID",DLGFUWCGetColumnWithUniqueID())
+
+	Call CONFIGWriteKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "ZOOMWIDTH", DLGFUWCGetZoomWidth())
+	Call CONFIGWriteKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "USEZOOM", IIf(DLGFUWCUseZoom(), "1", "0"))
+
+	Call CONFIGWriteKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "DSNFILE", DLGFUWCGetDSNFile())
+	Call CONFIGWriteKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "USERNAME", DLGFUWCGetUserName())
+	Call CONFIGWriteKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "PASSWORD", DLGFUWCGetPassword())
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCWriteConfigFile")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCReadConfigFile()
+
+Dim	sValue As String,
+	nCols As Integer
+
+OnError GoTo ErrorOccured
+
+	If DLGFUWCGetConfigFile() = "" Then
+		Exit Sub
+	ElseIf NOT FileExists(DLGFUWCGetConfigFile()) Then
+		Exit Sub
+	End If
+
+	sValue = CONFIGReadKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "WIDTH")
+	Call DLGFUWCSetResultListWidth(Val(sValue))
+	sValue = CONFIGReadKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "HEIGHT")
+	Call DLGFUWCSetResultListHeight(Val(sValue))
+
+	sValue = CONFIGReadKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "SCHEMA_DATABASE")
+	Call DLGFUWCSetDBSchema(sValue)
+	sValue = CONFIGReadKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "TABLE_DATABASE")
+	Call DLGFUWCSetDBTable(sValue)
+
+	For nCols = 1 To 3
+		sValue = CONFIGReadKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "COLUMN_NAME" & nCols)
+		Call DLGFUWCSetColumnToSearch(nCols, sValue)
+		sValue = CONFIGReadKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "COLUMN_TITLE" & nCols)
+		Call DLGFUWCSetColumnToSearchTitle(nCols, sValue)
+		sValue = CONFIGReadKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "COLUMN_METHOD" & nCols)
+		Call DLGFUWCSetColumnToSearchMethod(nCols, Val(sValue))
+		sValue = CONFIGReadKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "COLUMN_WIDE" & nCols)
+		Call DLGFUWCSetIsColumnToSearchWide(nCols, IIf(sValue="1", TRUE, FALSE))
+	Next
+
+	sValue = CONFIGReadKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "TABFILE_MAPINFO")
+	Call DLGFUWCSetMITabFile(sValue)
+	sValue = CONFIGReadKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "COLUMN_UNIQUEID")
+	Call DLGFUWCSetColumnWithUniqueID(sValue)
+
+	sValue = CONFIGReadKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "ZOOMWIDTH")
+	Call DLGFUWCSetZoomWidth(Val(sValue))
+	sValue = CONFIGreadKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "USEZOOM")
+	Call DLGFUWCSetUseZoom(IIf(sValue="1", TRUE, FALSE))
+
+	sValue = CONFIGReadKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "DSNFILE")
+	Call DLGFUWCSetDSNFile(sValue)
+	sValue = CONFIGReadKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "USERNAME")
+	Call DLGFUWCSetUserName(sValue)
+	sValue = CONFIGReadKey(DLGFUWCGetConfigFile(), "SEARCH WILDCARD", "PASSWORD")
+	Call DLGFUWCSetPassword(sValue)
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCReadConfigFile")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGFUWCSearchDatabaseTable() As Logical
+
+OnError GoTo ErrorOccured
+
+DLGFUWCSearchDatabaseTable = FALSE
+
+	If DLGFUWCGetDBTable() = "" Then
+		Exit Function
+'	ElseIf DLGFUWCGetDBSchema() = "" Then
+'		Exit Function
+	ElseIf DLGFUWCGetDSNFile() = "" Then
+		Exit Function
+	End If
+
+DLGFUWCSearchDatabaseTable = TRUE
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCSearchDatabaseTable")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCSetDBSchema(ByVal sSchema As String)
+
+OnError GoTo ErrorOccured
+
+	msDBSchema	= sSchema
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCSetDBSchema")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+Function DLGFUWCGetDBSchema() As String
+
+OnError GoTo ErrorOccured
+
+	DLGFUWCGetDBSchema = msDBSchema
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetDBSchema")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCSetDBTable(ByVal sTable As String)
+
+OnError GoTo ErrorOccured
+
+	msDBTable	= sTable
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCSetDBTable")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+Function DLGFUWCGetDBTable() As String
+
+OnError GoTo ErrorOccured
+
+	DLGFUWCGetDBTable = msDBTable
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetDBTable")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCSetColumnToSearch(ByVal nColumnNo As Integer, ByVal sColumn As String)
+
+OnError GoTo ErrorOccured
+
+	marrColumnToSearch(nColumnNo)	= sColumn
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCSetColumnToSearch")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+Function DLGFUWCGetColumnToSearch(ByVal nColumnNo As Integer) As String
+
+OnError GoTo ErrorOccured
+
+	DLGFUWCGetColumnToSearch = marrColumnToSearch(nColumnNo)
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetColumnToSearch")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCSetColumnToSearchTitle(ByVal nColumnNo As Integer, ByVal sTitle As String)
+
+OnError GoTo ErrorOccured
+
+	marrColumnToSearchTitle(nColumnNo)	= sTitle
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCSetColumnToSearch")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+Function DLGFUWCGetColumnToSearchTitle(ByVal nColumnNo As Integer) As String
+
+OnError GoTo ErrorOccured
+
+	DLGFUWCGetColumnToSearchTitle = IIf(marrColumnToSearchTitle(nColumnNo) = "", DLGFUWCGetColumnToSearch(nColumnNo), marrColumnToSearchTitle(nColumnNo))
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetColumnToSearchTitle")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCSetIsColumnToSearchWide(ByVal nColumnNo As Integer, ByVal bIsWide As Logical)
+
+OnError GoTo ErrorOccured
+
+	marrIsColumnToSearchWide(nColumnNo)	= bIsWide
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCSetIsColumnToSearchWide")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+Function DLGFUWCIsColumnToSearchWide(ByVal nColumnNo As Integer) As Logical
+
+OnError GoTo ErrorOccured
+
+	DLGFUWCIsColumnToSearchWide = marrIsColumnToSearchWide(nColumnNo)
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCIsColumnToSearchWide")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCSetColumnToSearchMethod(ByVal nColumnNo As Integer, ByVal nMethod As Integer)
+
+OnError GoTo ErrorOccured
+
+	marrColumnToSearchMethod(nColumnNo)	= nMethod
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCSetColumnToSearchMethod")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+Function DLGFUWCGetColumnToSearchMethod(ByVal nColumnNo As Integer) As Integer
+
+OnError GoTo ErrorOccured
+
+	DLGFUWCGetColumnToSearchMethod = IIf(marrColumnToSearchMethod(nColumnNo)= 0, SEARCH_TYPE_LIKE, marrColumnToSearchMethod(nColumnNo))
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetColumnToSearchMethod")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+Function DLGFUWCGetSearchMethodAsString(ByVal nColumnNo As Integer) As String
+
+OnError GoTo ErrorOccured
+
+	Do Case DLGFUWCGetColumnToSearchMethod(nColumnNo)
+		Case SEARCH_TYPE_EQUAL_TO
+			DLGFUWCGetSearchMethodAsString = "<=>"
+		Case SEARCH_TYPE_LIKE
+			DLGFUWCGetSearchMethodAsString = "<Like>"
+	End Case
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetColumnToSearchMethod")
+	Call ERRShow()
+
+End Function
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+'Sub DLGFUWCSetMITable(ByVal sTable As String)
+'
+'OnError GoTo ErrorOccured
+'
+'	msMITable	= sTable
+'	Exit Sub
+''-------------------------
+'ErrorOccured:
+'	Call ERRCreate(Err(), Error$(), "DLGFUWCSetMITable")
+'	Call ERRShow()
+'
+'End Sub
+'**********************************************************************************************''
+Function DLGFUWCGetMITable() As String
+
+Dim	sTab As String
+
+OnError GoTo ErrorOccured
+
+	If DLGFUWCGetMITabFile() = "" Then
+		DLGFUWCGetMITable = ""
+	Else
+		sTab = TABGetNameFromTabFile(DLGFUWCGetMITabFile())
+		If sTab = "" Then
+			DLGFUWCGetMITable = PathToTableName$(DLGFUWCGetMITabFile())
+		Else
+			DLGFUWCGetMITable = sTab
+		End If
+	End If
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetMITable")
+	Call ERRShow()
+
+End Function
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCSetMITabFile(ByVal sFile As String)
+
+OnError GoTo ErrorOccured
+
+	msMITabFile	= sFile
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCSetMITabFile")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+Function DLGFUWCGetMITabFile() As String
+
+OnError GoTo ErrorOccured
+
+	DLGFUWCGetMITabFile = msMITabFile
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetMITabFile")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCSetColumnWithUniqueID(ByVal sColumn As String)
+
+OnError GoTo ErrorOccured
+
+	msColumnWithUniqueID	= sColumn
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCSetColumnWithUniqueID")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+Function DLGFUWCGetColumnWithUniqueID() As String
+
+OnError GoTo ErrorOccured
+
+	DLGFUWCGetColumnWithUniqueID = msColumnWithUniqueID
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetColumnWithUniqueID")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCSetZoomWidth(ByVal nZoomWidth As Integer)
+
+OnError GoTo ErrorOccured
+
+	mnZoomWidth = nZoomWidth
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCSetZoomWidth")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+Function DLGFUWCGetZoomWidth() As Integer
+
+OnError GoTo ErrorOccured
+
+	DLGFUWCGetZoomWidth = IIf(mnZoomWidth=0, 250, mnZoomWidth)
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetZoomWidth")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCSetUseZoom(ByVal bUseZoom As Logical)
+
+OnError GoTo ErrorOccured
+
+	mbUseZoom = bUseZoom
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCSetZoomWidth")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+Function DLGFUWCUseZoom() As Logical
+
+OnError GoTo ErrorOccured
+
+	DLGFUWCUseZoom = mbUseZoom
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCUseZoom")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCSetSearchValue(ByVal nColumnNo As Integer, ByVal sSearchFor As String)
+
+OnError GoTo ErrorOccured
+
+	marrSearchValue(nColumnNo) = sSearchFor
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCSetSearchValue")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+Function DLGFUWCGetSearchValue(ByVal nColumnNo As Integer) As String
+
+OnError GoTo ErrorOccured
+
+	DLGFUWCGetSearchValue = marrSearchValue(nColumnNo)
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetSearchValue")
+	Call ERRShow()
+
+End Function
+
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCSetMaximumMatchNumber(ByVal nMaxMatches As Integer)
+
+OnError GoTo ErrorOccured
+
+	mnMaximumMatchNumber = nMaxMatches
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCSetMaximumMatchNumber")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+Function DLGFUWCGetMaximumMatchNumber() As Integer
+
+OnError GoTo ErrorOccured
+
+	If mnMaximumMatchNumber = 0 Then
+		mnMaximumMatchNumber	= 10000
+	End If
+	DLGFUWCGetMaximumMatchNumber = mnMaximumMatchNumber
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetMaximumMatchNumber")
+	Call ERRShow()
+
+End Function
+
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCSetDSNFile(ByVal sDSNFile As String)
+
+OnError GoTo ErrorOccured
+
+	If sDSNFile <> "" Then
+		sDSNFile = FILEGetAbsolutePath(ApplicationDirectory$(), sDSNFile)
+	End If
+	msDSNFile	= sDSNFile
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCSetDSNFile")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+Function DLGFUWCGetDSNFile() As String
+
+OnError GoTo ErrorOccured
+
+	DLGFUWCGetDSNFile = msDSNFile
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetDSNFile")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCSetUserName(ByVal sUserName As String)
+
+OnError GoTo ErrorOccured
+
+	msUserName	= sUserName
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCSetUserName")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+Function DLGFUWCGetUserName() As String
+
+OnError GoTo ErrorOccured
+
+	DLGFUWCGetUserName = msUserName
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetUserName")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGFUWCSetPassword(ByVal sPassword As String)
+
+OnError GoTo ErrorOccured
+
+	msPassword	= sPassword
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCSetPassword")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+Function DLGFUWCGetPassword() As String
+
+OnError GoTo ErrorOccured
+
+	DLGFUWCGetPassword = msPassword
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetPassword")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGFUWCGetConnection() As Integer
+
+OnError GoTo ErrorOccured
+
+	DLGFUWCGetConnection = mnConnection
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGFUWCGetConnection")
+	Call ERRShow()
+
+End Function

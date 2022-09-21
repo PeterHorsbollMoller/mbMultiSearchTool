@@ -1,0 +1,31 @@
+15:50:03 Number of Columns: 3
+15:50:03 Number of Columns: 3
+15:50:03 1: PostCodeIdentifier
+15:50:03 2: StreetName
+15:50:03 3: StreetBuildingIdentifier
+15:50:03 Number of Columns: 3
+15:50:03 Number of Columns: 3
+15:50:03 1: PostCodeIdentifier
+15:50:03 2: StreetName
+15:50:03 3: StreetBuildingIdentifier
+15:50:03 Number of Columns: 3
+15:50:03 Number of Columns: 3
+15:50:03 DLGCWSHandler_EnableDisableControls, On: 1 to 3
+15:50:03 DLGCWSHandler_EnableDisableControls, Off: 4 to 3
+16:04:34 On: 1 to 3
+16:04:34 Off: 4 to 3
+16:08:57 Local Query: Select * From Addresses Where PostCodeIdentifier = "9520" And StreetName Like "Post%" Order By PostCodeIdentifier Into __FIND__RESULTS__SORTED__ NoSelect Hide
+16:08:57 Loaded 0 rows after 0 secs
+16:08:57 Added 0 rows to dialog after 0 secs
+16:09:03 Local Query: Select * From Addresses Where PostCodeIdentifier = "9520" And StreetName Like "Rost%" Order By PostCodeIdentifier Into __FIND__RESULTS__SORTED__ NoSelect Hide
+16:09:03 Loaded 0 rows after 0 secs
+16:09:03 Added 0 rows to dialog after 0 secs
+16:09:09 Local Query: Select * From Addresses Where PostCodeIdentifier = "9530" And StreetName Like "Rost%" Order By PostCodeIdentifier Into __FIND__RESULTS__SORTED__ NoSelect Hide
+16:09:09 Loaded 0 rows after 0 secs
+16:09:09 Added 0 rows to dialog after 0 secs
+16:09:46 Local Query: Select * From Addresses Where PostCodeIdentifier = "9520" And StreetName Like "Sten%" Order By PostCodeIdentifier Into __FIND__RESULTS__SORTED__ NoSelect Hide
+16:09:46 Loaded 122 rows after 0 secs
+16:09:46 Added 122 rows to dialog after 0 secs
+07:28:05 Select: Select * From Addresses where (Address Like "Lendals%") Or (AddressPostalCode Like "Lendals%") Or (AddressTotal Like "Lendals%") Or (AddressAccessIdentifier Like "Lendals%") Or (VersionId Like "Lendals%") Or (BuildingName Like "Lendals%") Or (MunicipalityCode Like "Lendals%") Or (StreetCode Like "Lendals%") Or (StreetName Like "Lendals%") Or (StreetBuildingIdentifier Like "Lendals%") Or (DistrictSubdivisionIdentifier Like "Lendals%") Or (PostCodeIdentifier Like "Lendals%") Or (DistrictName Like "Lendals%") Or (CadastralDistrictName Like "Lendals%") Or (LandParcelIdentifier Like "Lendals%") Or (MunicipalRealPropertyIdentifier Like "Lendals%") Or (AddressAccessCreateDate Like "Lendals%") Or (AddressAccessValidDate Like "Lendals%") Or (AddressAccessChangeDate Like "Lendals%") Or (AddressCoordinateQualityClassCo Like "Lendals%") Or (AddressGeometrySourceCode Like "Lendals%") Or (AddressCoordinateTechnicalStand Like "Lendals%") Or (GeometryDDKNcell100mText Like "Lendals%") Or (GeometryDDKNcell1kmText Like "Lendals%") Or (GeometryDDKNcell10kmText Like "Lendals%") Or (AddressPointRevisionDateTime Like "Lendals%") Into Selection
+07:28:05 Query finished. Found 8 records!
+07:40:39 Select PostCodeIdentifier, Count(*) "NumRecords" From Addresses Group By PostCodeIdentifier Order By PostCodeIdentifier Into Addresses_GrpOn_PostCodeIdentifier NoSelect

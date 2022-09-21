@@ -1,0 +1,5 @@
+(dlgmstcconfiguration.mb:20) File DLGMSTConfiguration.def not found. 
+(dlgmstcconfiguration.mb:40) No prototype declared for Sub procedure or Function DLGMSTConfiguration. 
+(dlgmstcconfiguration.mb:42) Sub procedure or Function DLGMSTConfiguration does not match Declare. 
+(dlgmstcconfiguration.mb:44) Variable DLGMSTConfiguration not defined. 
+(dlgmstcconfiguration.mb:82) Variable DLGMSTConfiguration not defined. 

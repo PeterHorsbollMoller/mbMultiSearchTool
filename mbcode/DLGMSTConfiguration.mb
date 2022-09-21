@@ -1,0 +1,451 @@
+﻿'*******************************************************************************
+'** 	Created By Peter Horsbøll Møller, Precisely
+'** 	Program:
+'** 	Modul:
+'**
+'*******************************************************************************
+
+'-------------------------------------
+Include "MapBasic.def"
+Include "Icons.def"
+Include "Menu.def"
+'**default constants...
+Include "Library\Defaults.def"
+
+'-------------------------------------
+Include "Library\CONFIGFILELib.def"
+Include "Library\DEBUGLib.def"
+Include "Library\ERRORLib.def"
+Include "Library\TABLELib.def"
+
+Include "DLGMSTConfiguration.def"
+Include "DLGFindUsingWildcard.def"
+Include "DLGConfigureWildcardSearch.def"
+
+Declare Sub DLGMSTHandler_OnLoad
+Declare Sub DLGMSTHandler_OKClicked
+Declare Sub DLGMSTHandler_WildcardClicked
+
+Define	CTRL_TXT_WILDCARD_SEARCH			100
+Define	CTRL_LBL_WILDCARD_CONFIG_SAVED	200
+Define	CTRL_TXT_LIST_WIDTH				300
+Define	CTRL_TXT_LIST_HEIGHT			350
+
+Dim	msConfigFile As String,
+	mbAddFilterUsingCellValue, mbAddGroupByColumn, mbAddZoomToSelection, mbAddPanToSelection As Logical
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGMSTConfiguration() As Logical
+
+OnError GoTo ErrorOccured
+
+DLGMSTConfiguration = FALSE
+
+	Dialog
+		Title "Configuration"
+		Calling DLGMSTHandler_OnLoad
+
+		Control StaticText	Position 5,5
+			Title "Wildcard Table Search"
+		Control EditText	Position 5,15		ID CTRL_TXT_WILDCARD_SEARCH
+			Width 170
+			Disable
+		Control Button		Position 180,15
+			Width 50	Height 12
+			Title "Configure..."
+			Calling DLGMSTHandler_WildcardClicked
+		Control StaticText	Position 5,30		ID CTRL_LBL_WILDCARD_CONFIG_SAVED
+			Title "Wildcard Search saved to configuration file"
+			Hide
+
+		Control StaticText	Position 5,45
+			Title "Result List Widht"
+		Control EditText	Position 5,55		ID CTRL_TXT_LIST_WIDTH
+			Width 110
+			Value FormatNumber$(DLGFUWCGetResultListWidth())
+		Control StaticText	Position 120,45
+			Title "Result List Height"
+		Control EditText	Position 120,55	ID CTRL_TXT_LIST_HEIGHT
+			Width 110
+			Value FormatNumber$(DLGFUWCGetResultListHeight())
+
+		Control StaticText	Position 5,70
+			Title "Add Menu Item to Browser Context Menu"
+		Control Checkbox	Position 15,85
+			Title "Filter using Cell Value"
+			Value DLGMSTAddFilterUsingCellValue()
+			Into mbAddFilterUsingCellValue
+		Control Checkbox	Position 15,100
+			Title "Group by Current Column"
+			Value DLGMSTAddGroupByColumn()
+			Into mbAddGroupByColumn
+		Control Checkbox	Position 120,85
+			Title "Zoom to Extent of Selection"
+			Value DLGMSTAddZoomToSelection()
+			Into mbAddZoomToSelection
+		Control Checkbox	Position 120,100
+			Title "Pan to the Selected Record"
+			Value DLGMSTAddPanToSelection()
+			Into mbAddPanToSelection
+
+		Control OKButton
+			Calling DLGMSTHandler_OKClicked
+		Control CancelButton
+
+	If not CommandInfo(CMD_INFO_DLG_OK) Then
+		Exit Function
+	End If
+
+DLGMSTConfiguration = TRUE
+
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGMSTConfiguration")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGMSTHandler_OnLoad
+
+Dim	nCol As Integer,
+	sLookup As String
+
+OnError GoTo ErrorOccured
+
+	'**Getting values from DLGFindUsingWildCard
+	For nCol = 1 To 3
+		If DLGFUWCGetColumnToSearch(nCol) <> "" Then
+			If sLookup = "" Then
+				sLookup = DLGFUWCGetColumnToSearch(nCol)
+			Else
+				sLookup = sLookup & "|" & DLGFUWCGetColumnToSearch(nCol)
+			End If
+		End If
+	Next
+
+	sLookup	= DLGFUWCGetMITable() & "(" & sLookup & ")"
+	Alter Control CTRL_TXT_WILDCARD_SEARCH Value sLookup
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGMSTHandler_OnLoad")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGMSTHandler_OKClicked
+
+Dim	nWidth, nHeight As Integer
+
+OnError GoTo ErrorOccured
+
+	nWidth	= DeformatNumber$(ReadControlValue(CTRL_TXT_LIST_WIDTH))
+	nHeight	= DeformatNumber$(ReadControlValue(CTRL_TXT_LIST_HEIGHT))
+
+	If nWidth < 180 Then
+		Note "The width of the result list should be at least 180 and 500!"
+		Alter Control CTRL_TXT_LIST_WIDTH Value "180"
+		Alter Control CTRL_TXT_LIST_WIDTH Active
+		Dialog Preserve
+		Exit Sub
+	ElseIf nWidth > 500 Then
+		Note "The width of the result list should be at least 180 and 500!"
+		Alter Control CTRL_TXT_LIST_WIDTH Value "500"
+		Alter Control CTRL_TXT_LIST_WIDTH Active
+		Dialog Preserve
+		Exit Sub
+	End If
+	If nHeight < 100 Then
+		Note "The width of the result list should be between 100 and 500!"
+		Alter Control CTRL_TXT_LIST_HEIGHT Value "100"
+		Alter Control CTRL_TXT_LIST_HEIGHT Active
+		Dialog Preserve
+		Exit Sub
+	ElseIf nHeight > 500 Then
+		Note "The width of the result list should be between 100 and 500!"
+		Alter Control CTRL_TXT_LIST_HEIGHT Value "500"
+		Alter Control CTRL_TXT_LIST_HEIGHT Active
+		Dialog Preserve
+		Exit Sub
+	End If
+
+	Call DLGFUWCSetResultListHeight(nHeight)
+	Call DLGFUWCSetResultListWidth(nWidth)
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGMSTHandler_OKClicked")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGMSTHandler_WildcardClicked
+
+Dim	nCol As Integer,
+	sLookup, arrColumns(3), arrTitles(3) As String,
+	arrIsWide(3) As Logical,
+	arrMethods(3) As Integer
+
+OnError GoTo ErrorOccured
+
+	'**Getting values from DLGFindUsingWildCard
+	For nCol = 1 To 3
+		arrColumns(nCol)	= DLGFUWCGetColumnToSearch(nCol)
+		arrTitles(nCol)	= DLGFUWCGetColumnToSearchTitle(nCol)
+		arrIsWide(nCol)	= DLGFUWCIsColumnToSearchWide(nCol)
+		arrMethods(nCol)	= DLGFUWCGetColumnToSearchMethod(nCol)
+	Next
+
+	'**Parsing values to DLGConfigureWildcardSearch
+	Call DLGCWSSetTabFile(DLGFUWCGetMITabFile())
+	Call DLGCWSSetColumnsToSearch(arrColumns)
+	Call DLGCWSSetColumnsToSearchTitle(arrTitles())
+	Call DLGCWSSetIsColumnsToSearchWide(arrIsWide())
+	Call DLGCWSSetColumnsToSearchMethod(arrMethods())
+	If not DLGConfigureWildcardSearch() Then
+		Alter Control CTRL_LBL_WILDCARD_CONFIG_SAVED Hide
+		Exit Sub
+	End If
+
+	Call DLGFUWCSetMITabFile(DLGCWSGetTabFile())
+
+	'**Getting values from DLGConfigureWildcardSearch
+	nCol = DLGCWSGetColumnsToSearch(arrColumns)
+	nCol = DLGCWSGetColumnsToSearchTitle(arrTitles())
+	nCol = DLGCWSIsColumnsToSearchWide(arrIsWide())
+	nCol = DLGCWSGetColumnsToSearchMethod(arrMethods())
+
+	'**Parsing values to DLGFindUsingWildCard
+	For nCol = 1 To 3
+		Call DLGFUWCSetColumnToSearch(nCol, arrColumns(nCol))
+		If arrColumns(nCol) <> "" Then
+			If sLookup = "" Then
+				sLookup = arrColumns(nCol)
+			Else
+				sLookup = sLookup & "|" & arrColumns(nCol)
+			End If
+		End If
+		Call DLGFUWCSetColumnToSearchTitle(nCol, arrTitles(nCol))
+		Call DLGFUWCSetIsColumnToSearchWide(nCol, arrIsWide(nCol))
+		Call DLGFUWCSetColumnToSearchMethod(nCol, arrMethods(nCol))
+	Next
+
+	sLookup	= DLGFUWCGetMITable() & "(" & sLookup & ")"
+	Alter Control CTRL_TXT_WILDCARD_SEARCH Value sLookup
+
+	Call DLGFUWCWriteConfigFile()
+	Alter Control CTRL_LBL_WILDCARD_CONFIG_SAVED Show
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGMSTHandler_LookupConfigure")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGMSTAddFilterUsingCellValue() As Logical
+
+OnError GoTo ErrorOccured
+
+	DLGMSTAddFilterUsingCellValue = mbAddFilterUsingCellValue
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGMSTAddFilterUsingCellValue")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGMSTAddGroupByColumn() As Logical
+
+OnError GoTo ErrorOccured
+
+	DLGMSTAddGroupByColumn = mbAddGroupByColumn
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGMSTAddGroupByColumn")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGMSTAddZoomToSelection() As Logical
+
+OnError GoTo ErrorOccured
+
+	DLGMSTAddZoomToSelection = mbAddZoomToSelection
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGMSTAddZoomToSelection")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGMSTAddPanToSelection() As Logical
+
+OnError GoTo ErrorOccured
+
+	DLGMSTAddPanToSelection = mbAddPanToSelection
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGMSTAddPanToSelection")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGMSTSetConfigFile(ByVal sFile As String)
+
+OnError GoTo ErrorOccured
+
+	msConfigFile	= sFile
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGMSTSetConfigFile")
+	Call ERRShow()
+
+End Sub
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'	:
+'Return value:
+'
+'**********************************************************************************************''
+Function DLGMSTGetConfigFile() As String
+
+OnError GoTo ErrorOccured
+
+	DLGMSTGetConfigFile = msConfigFile
+	Exit Function
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGMSTGetConfigFile")
+	Call ERRShow()
+
+End Function
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGMSTWriteConfigFile()
+
+Dim	nCols As Integer
+
+OnError GoTo ErrorOccured
+
+	If DLGMSTGetConfigFile() = "" Then
+		Exit Sub
+	End If
+
+	Call CONFIGWriteKey(DLGMSTGetConfigFile(), "RIBBON BROWSER CONTEXT MENU", "FILTER CELL VALUE", IIf(mbAddFilterUsingCellValue, "1", "0"))
+	Call CONFIGWriteKey(DLGMSTGetConfigFile(), "RIBBON BROWSER CONTEXT MENU", "GROUP BY COLUMN", IIf(mbAddGroupByColumn, "1", "0"))
+	Call CONFIGWriteKey(DLGMSTGetConfigFile(), "RIBBON BROWSER CONTEXT MENU", "ZOOM TO SELECTION", IIf(mbAddZoomToSelection, "1", "0"))
+	Call CONFIGWriteKey(DLGMSTGetConfigFile(), "RIBBON BROWSER CONTEXT MENU", "PAN TO SELECTION", IIf(mbAddPanToSelection, "1", "0"))
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGMSTWriteConfigFile")
+	Call ERRShow()
+
+End Sub
+
+'**********************************************************************************************''
+'Created by Peter Horsbøll Møller, Precisely
+'Parameters:
+'
+'**********************************************************************************************''
+Sub DLGMSTReadConfigFile()
+
+Dim	sValue As String,
+	nCols As Integer
+
+OnError GoTo ErrorOccured
+
+	If DLGMSTGetConfigFile() = "" Then
+		Exit Sub
+	ElseIf NOT FileExists(DLGMSTGetConfigFile()) Then
+		Exit Sub
+	End If
+
+	sValue = CONFIGreadKey(DLGMSTGetConfigFile(), "RIBBON BROWSER CONTEXT MENU", "FILTER CELL VALUE")
+	mbAddFilterUsingCellValue	= IIf(sValue="1", TRUE, FALSE)
+
+	sValue = CONFIGreadKey(DLGMSTGetConfigFile(), "RIBBON BROWSER CONTEXT MENU", "GROUP BY COLUMN")
+	mbAddGroupByColumn			= IIf(sValue="1", TRUE, FALSE)
+
+	sValue = CONFIGreadKey(DLGMSTGetConfigFile(), "RIBBON BROWSER CONTEXT MENU", "ZOOM TO SELECTION")
+	mbAddZoomToSelection		= IIf(sValue="1", TRUE, FALSE)
+
+	sValue = CONFIGreadKey(DLGMSTGetConfigFile(), "RIBBON BROWSER CONTEXT MENU", "PAN TO SELECTION")
+	mbAddPanToSelection			= IIf(sValue="1", TRUE, FALSE)
+
+	Exit Sub
+'-------------------------
+ErrorOccured:
+	Call ERRCreate(Err(), Error$(), "DLGMSTReadConfigFile")
+	Call ERRShow()
+
+End Sub
