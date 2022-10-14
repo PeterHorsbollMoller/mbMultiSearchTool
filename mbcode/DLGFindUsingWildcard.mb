@@ -253,7 +253,7 @@ End Sub
 '**********************************************************************************************''
 Sub DLGFUWCHandler_OKClicked
 
-Dim	sValue, sCond, sCmd, sTab, sTabFile As String,
+Dim	sValue, sCond, sCmd, sOrderBy, sTab, sTabFile As String,
 	nNumRows, nNumMatchFound, i, nTime, nCond, nValuesGiven As Integer,
 	arrCol(3) As Alias
 
@@ -329,6 +329,12 @@ OnError GoTo ErrorOccured
 	Else
 		For nCond = 1 To DLGFUWCNumSearchControls()
 			If DLGFUWCGetSearchValue(nCond) <> "" Then
+				If nCond = 1 Then
+					sOrderBy = DLGFUWCGetColumnToSearch(nCond)
+				Else
+					sOrderBy = sOrderBy & ", " & DLGFUWCGetColumnToSearch(nCond)
+				End If
+
 				If DLGFUWCGetColumnToSearchMethod(nCond) = SEARCH_TYPE_LIKE Then
 					If ColumnInfo(DLGFUWCGetMITable(), DLGFUWCGetColumnToSearch(nCond), COL_INFO_TYPE) = COL_TYPE_CHAR Then
 						sCond	= DLGFUWCGetColumnToSearch(nCond) & " Like " & eye & DLGFUWCGetSearchValue(nCond) & eye
@@ -353,7 +359,7 @@ OnError GoTo ErrorOccured
 
 		sCmd		= "Select * From " & DLGFUWCGetMITable()
 					& " Where " & sCmd
-					& " Order By " & DLGFUWCGetColumnToSearch(1)
+					& " Order By " & sOrderBy
 					& " Into __FIND__RESULTS__SORTED__ NoSelect Hide"
 		Call DEBUGPrint("Local Query: " & sCmd)
 		Run Command sCmd

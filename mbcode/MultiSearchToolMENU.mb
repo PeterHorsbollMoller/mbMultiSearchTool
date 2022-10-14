@@ -4,6 +4,8 @@
 '** 	Modul:
 '**
 '*******************************************************************************
+'22/09/2022 15.04.34	v1.0.1:	- Improved Wildcard Search to sort by all search columns
+'*******************************************************************************
 
 '-------------------------------------
 Include "MapBasic.def"
@@ -20,7 +22,7 @@ Include "Library\Defaults.def"
 Define xProgram 		"MultiSearchTool"
 Define xProgramName 	"Multi Search Tool"
 Define xProgramMenu		"MultiSearchTool"
-Define xVersion 		"1.0.0"
+Define xVersion 		"1.0.1"
 Define xYear			"2022"
 Define xAddToMenuBar	FALSE
 
