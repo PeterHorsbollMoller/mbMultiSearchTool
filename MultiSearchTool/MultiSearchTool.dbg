@@ -29,3 +29,110 @@
 07:28:05 Select: Select * From Addresses where (Address Like "Lendals%") Or (AddressPostalCode Like "Lendals%") Or (AddressTotal Like "Lendals%") Or (AddressAccessIdentifier Like "Lendals%") Or (VersionId Like "Lendals%") Or (BuildingName Like "Lendals%") Or (MunicipalityCode Like "Lendals%") Or (StreetCode Like "Lendals%") Or (StreetName Like "Lendals%") Or (StreetBuildingIdentifier Like "Lendals%") Or (DistrictSubdivisionIdentifier Like "Lendals%") Or (PostCodeIdentifier Like "Lendals%") Or (DistrictName Like "Lendals%") Or (CadastralDistrictName Like "Lendals%") Or (LandParcelIdentifier Like "Lendals%") Or (MunicipalRealPropertyIdentifier Like "Lendals%") Or (AddressAccessCreateDate Like "Lendals%") Or (AddressAccessValidDate Like "Lendals%") Or (AddressAccessChangeDate Like "Lendals%") Or (AddressCoordinateQualityClassCo Like "Lendals%") Or (AddressGeometrySourceCode Like "Lendals%") Or (AddressCoordinateTechnicalStand Like "Lendals%") Or (GeometryDDKNcell100mText Like "Lendals%") Or (GeometryDDKNcell1kmText Like "Lendals%") Or (GeometryDDKNcell10kmText Like "Lendals%") Or (AddressPointRevisionDateTime Like "Lendals%") Into Selection
 07:28:05 Query finished. Found 8 records!
 07:40:39 Select PostCodeIdentifier, Count(*) "NumRecords" From Addresses Group By PostCodeIdentifier Order By PostCodeIdentifier Into Addresses_GrpOn_PostCodeIdentifier NoSelect
+09:41:11 Local Query: Select * From Addresses Where PostCodeIdentifier = "6560" And StreetName Like "%Tovskovvej%" Order By PostCodeIdentifier Into __FIND__RESULTS__SORTED__ NoSelect Hide
+09:41:11 Loaded 0 rows after 0 secs
+09:41:11 Added 0 rows to dialog after 0 secs
+09:43:47 1: PostCodeIdentifier
+09:43:47 2: StreetName
+09:43:47 3: StreetBuildingIdentifier
+09:43:47 Number of Columns: 3
+09:43:47 Number of Columns: 3
+09:43:47 1: PostCodeIdentifier
+09:43:47 2: StreetName
+09:43:47 3: StreetBuildingIdentifier
+09:43:47 Number of Columns: 3
+09:43:47 Number of Columns: 3
+09:43:47 1: PostCodeIdentifier
+09:43:47 2: StreetName
+09:43:47 3: StreetBuildingIdentifier
+09:43:47 Number of Columns: 3
+09:43:47 Number of Columns: 3
+09:43:47 DLGCWSHandler_EnableDisableControls, On: 1 to 3
+09:43:47 DLGCWSHandler_EnableDisableControls, Off: 4 to 3
+09:43:58 DLGCWSHandler_EnableDisableControls, On: 1 to 3
+09:43:58 DLGCWSHandler_EnableDisableControls, Off: 4 to 3
+09:44:06 DLGCWSHandler_EnableDisableControls, On: 1 to 1
+09:44:06 DLGCWSHandler_EnableDisableControls, Off: 2 to 3
+09:44:08 DLGCWSHandler_EnableDisableControls, On: 1 to 1
+09:44:08 DLGCWSHandler_EnableDisableControls, Off: 2 to 3
+09:44:09 DLGCWSHandler_EnableDisableControls, On: 1 to 3
+09:44:09 DLGCWSHandler_EnableDisableControls, Off: 4 to 3
+09:44:26 On: 1 to 3
+09:44:42 1: PostCodeIdentifier
+09:44:42 2: StreetName
+09:44:42 3: StreetBuildingIdentifier
+09:44:42 Number of Columns: 3
+09:44:42 Number of Columns: 3
+09:44:42 1: PostCodeIdentifier
+09:44:42 2: StreetName
+09:44:42 3: StreetBuildingIdentifier
+09:44:42 Number of Columns: 3
+09:44:42 Number of Columns: 3
+09:44:42 1: PostCodeIdentifier
+09:44:42 2: StreetName
+09:44:42 3: StreetBuildingIdentifier
+09:44:42 Number of Columns: 3
+09:44:42 Number of Columns: 3
+09:44:42 DLGCWSHandler_EnableDisableControls, On: 1 to 3
+09:44:42 DLGCWSHandler_EnableDisableControls, Off: 4 to 3
+09:45:32 On: 1 to 3
+09:45:32 Off: 4 to 3
+09:45:53 Local Query: Select * From Adresser_20190114 Where Str$(postnr) Like "65%" And vejnavn Like "%tovskov%" Order By postnr Into __FIND__RESULTS__SORTED__ NoSelect Hide
+09:47:03 Loaded 91 rows after 70 secs
+09:47:03 Added 91 rows to dialog after 70 secs
+09:49:34 Changed the zoom of the map after 0 secs
+09:49:34 Changed the center of the map after 0 secs
+09:49:39 Changed the center of the map after 0 secs
+09:49:57 1: postnr
+09:49:57 2: vejnavn
+09:49:57 3: husnr
+09:49:57 Number of Columns: 3
+09:49:57 Number of Columns: 3
+09:49:57 1: postnr
+09:49:57 2: vejnavn
+09:49:57 3: husnr
+09:49:57 Number of Columns: 3
+09:49:57 Number of Columns: 3
+09:49:57 1: postnr
+09:49:57 2: vejnavn
+09:49:57 3: husnr
+09:49:57 Number of Columns: 3
+09:49:57 Number of Columns: 3
+09:49:57 DLGCWSHandler_EnableDisableControls, On: 1 to 3
+09:49:57 DLGCWSHandler_EnableDisableControls, Off: 4 to 3
+09:50:15 On: 1 to 3
+09:50:15 Off: 4 to 3
+09:50:26 Local Query: Select * From Adresser_20190114 Where postnr = 6560 And vejnavn Like "%tovskov%" Order By postnr Into __FIND__RESULTS__SORTED__ NoSelect Hide
+09:51:04 Loaded 91 rows after 38 secs
+09:51:04 Added 91 rows to dialog after 38 secs
+09:55:47 Local Query: Select * From Adresser_20190114 Where postnr = 6560 And vejnavn Like "%tovskov%" Order By postnr Into __FIND__RESULTS__SORTED__ NoSelect Hide
+09:55:48 Loaded 91 rows after 1 secs
+09:55:48 Added 91 rows to dialog after 1 secs
+09:58:13 1: postnr
+09:58:13 2: vejnavn
+09:58:13 3: husnr
+09:58:13 Number of Columns: 3
+09:58:13 Number of Columns: 3
+09:58:13 1: postnr
+09:58:13 2: vejnavn
+09:58:13 3: husnr
+09:58:13 Number of Columns: 3
+09:58:13 Number of Columns: 3
+09:58:13 1: postnr
+09:58:13 2: vejnavn
+09:58:13 3: husnr
+09:58:13 Number of Columns: 3
+09:58:13 Number of Columns: 3
+09:58:13 DLGCWSHandler_EnableDisableControls, On: 1 to 3
+09:58:13 DLGCWSHandler_EnableDisableControls, Off: 4 to 3
+10:01:45 Local Query: Select * From Adresser_20190114 Where postnr = 6560 And vejnavn Like "%tovskov%" Order By postnr Into __FIND__RESULTS__SORTED__ NoSelect Hide
+10:01:45 Loaded 91 rows after 0 secs
+10:01:45 Added 91 rows to dialog after 0 secs
+10:01:48 Changed the zoom of the map after 0 secs
+10:01:48 Changed the center of the map after 0 secs
+10:02:04 Local Query: Select * From Adresser_20190114 Where postnr = 6560 And vejnavn Like "%tovskov%" Order By postnr Into __FIND__RESULTS__SORTED__ NoSelect Hide
+10:02:04 Loaded 91 rows after 0 secs
+10:02:04 Added 91 rows to dialog after 0 secs
+10:02:06 Changed the zoom of the map after 0 secs
+10:02:06 Changed the center of the map after 0 secs
+10:02:08 Changed the center of the map after 0 secs

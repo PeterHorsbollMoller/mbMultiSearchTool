@@ -211,6 +211,11 @@ OnError GoTo ErrorOccured
 		If nTabItem > 0 Then
 			Alter Control CTRL_LST_TABLE Value nTabItem
 			Call DLGCWSHandler_TableClicked
+		Else
+			If Ubound(marrTables) > 0 Then
+				Alter Control CTRL_LST_TABLE Value 1
+				Call DLGCWSHandler_TableClicked
+			End If
 		End If
 	End If
 
