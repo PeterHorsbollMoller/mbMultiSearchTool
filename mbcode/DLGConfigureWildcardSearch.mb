@@ -45,7 +45,7 @@ Define	CTRL_LST_SEARCH_METHOD		710	'1-3
 Dim	marrTables(), marrColNames() As String,
 	msTabFile, marrSearchColNames(3), marrSearchColTitles(3) As String,
 	marrSearchMethod(3) As Integer,
-	marrIsWide(3) As Logical
+	marrIsWide(3), mbTableOpenedByDialog As Logical
 
 '**********************************************************************************************''
 'Created by Peter Horsbøll Møller, Precisely
@@ -60,130 +60,146 @@ OnError GoTo ErrorOccured
 
 DLGConfigureWildcardSearch = FALSE
 
+	mbTableOpenedByDialog = FALSE
+	If Not DLGCWSGetTabFile() = "" Then
+		If Not TABIsOpen(DLGCWSGetTable()) Then
+			If FileExists(DLGCWSGetTabFile()) Then
+				Open Table DLGCWSGetTabFile() Interactive
+				If TABIsOpen(DLGCWSGetTable()) Then
+					mbTableOpenedByDialog = TRUE
+				End If
+			End If
+		End If
+	End If
+
 	ReDim marrTables(0)
 	If TABGetListOfNames(TAB_USE_ALL_BUT_IMAGES, marrTables()) = 0 Then
 		Note "Please open at least one table to search!"
 		Exit Function
 	End If
 
-		Dialog
-			Title "Configure Wildcard Search"
-			Calling DLGCWSHandler_OnLoad
+	Dialog
+		Title "Configure Wildcard Search"
+		Calling DLGCWSHandler_OnLoad
 
-			Control StaticText	Position 5,5
-				Title "Table"
-			Control PopupMenu	Position 5,15			ID CTRL_LST_TABLE
-				Width 250
-				Title From Variable marrTables
-				Calling DLGCWSHandler_TableClicked
+		Control StaticText	Position 5,5
+			Title "Table"
+		Control PopupMenu	Position 5,15			ID CTRL_LST_TABLE
+			Width 250
+			Title From Variable marrTables
+			Calling DLGCWSHandler_TableClicked
 
-			Control StaticText	Position 15,32
-				Title "Number of Columns to Search:"
-			Control CheckBox	Position 120,32		ID CTRL_CHK_NUMCOLS + 1
-				Title "1"
-				Value IIf(DLGCWSGetNumColumnsToSearch()=1, TRUE, FALSE)
-				Calling DLGCWSHandler_NumColumnsClicked
-			Control CheckBox	Position 150,32		ID CTRL_CHK_NUMCOLS + 2
-				Title "2"
-				Value IIf(DLGCWSGetNumColumnsToSearch()=2, TRUE, FALSE)
-				Calling DLGCWSHandler_NumColumnsClicked
-			Control CheckBox	Position 180,32		ID CTRL_CHK_NUMCOLS + 3
-				Title "3"
-				Value IIf(DLGCWSGetNumColumnsToSearch()=3, TRUE, FALSE)
-				Calling DLGCWSHandler_NumColumnsClicked
+		Control StaticText	Position 15,32
+			Title "Number of Columns to Search:"
+		Control CheckBox	Position 120,32		ID CTRL_CHK_NUMCOLS + 1
+			Title "1"
+			Value IIf(DLGCWSGetNumColumnsToSearch()=1, TRUE, FALSE)
+			Calling DLGCWSHandler_NumColumnsClicked
+		Control CheckBox	Position 150,32		ID CTRL_CHK_NUMCOLS + 2
+			Title "2"
+			Value IIf(DLGCWSGetNumColumnsToSearch()=2, TRUE, FALSE)
+			Calling DLGCWSHandler_NumColumnsClicked
+		Control CheckBox	Position 180,32		ID CTRL_CHK_NUMCOLS + 3
+			Title "3"
+			Value IIf(DLGCWSGetNumColumnsToSearch()=3, TRUE, FALSE)
+			Calling DLGCWSHandler_NumColumnsClicked
 
-			'--------------------------------------------------------------------
-			Control GroupBox	Position 5,45			ID CTRL_GRP_COLUMN + 1
-				Width 250	Height 45
-				Title "First Column"
+		'--------------------------------------------------------------------
+		Control GroupBox	Position 5,45			ID CTRL_GRP_COLUMN + 1
+			Width 250	Height 45
+			Title "First Column"
 
-			Control	StaticText	Position 15,55		ID CTRL_LBL_TITLE + 1
-				Title "Title"
-			Control EditText	Position 15,65			ID CTRL_TXT_TITLE + 1
-				Width 60
-				Value marrSearchColTitles(1)
+		Control	StaticText	Position 15,55		ID CTRL_LBL_TITLE + 1
+			Title "Title"
+		Control EditText	Position 15,65			ID CTRL_TXT_TITLE + 1
+			Width 60
+			Value marrSearchColTitles(1)
+		Control StaticText	Position 80,55			ID CTRL_LBL_COLUMNS + 1
+			Title "Column"
+		Control PopupMenu	Position 80,65			ID CTRL_LST_COLUMNS + 1
+			Width 95
 
-			Control StaticText	Position 80,55			ID CTRL_LBL_COLUMNS + 1
-				Title "Column"
-			Control PopupMenu	Position 80,65			ID CTRL_LST_COLUMNS + 1
-				Width 95
+		Control CheckBox	Position 120,55		ID CTRL_CHK_IS_WIDE + 1
+			Title "Wide Field"
+			Value marrIsWide(1)
+			Calling DLGCWSHandler_IsWideClicked
 
-			Control CheckBox	Position 120,55		ID CTRL_CHK_IS_WIDE + 1
-				Title "Wide Field"
-				Value marrIsWide(1)
-				Calling DLGCWSHandler_IsWideClicked
+		Control StaticText	Position 180,55		ID CTRL_LBL_SEARCH_METHOD + 1
+			Title "Search Operator"
+		Control PopupMenu	Position 180,65		ID CTRL_LST_SEARCH_METHOD + 1
+			Width 65
+			Title "Contains (Like);Equal To (=)"
+			Value Maximum(1, marrSearchMethod(1))
 
-			Control StaticText	Position 180,55		ID CTRL_LBL_SEARCH_METHOD + 1
-				Title "Search Operator"
-			Control PopupMenu	Position 180,65		ID CTRL_LST_SEARCH_METHOD + 1
-				Width 65
-				Title "Contains (Like);Equal To (=)"
-				Value Maximum(1, marrSearchMethod(1))
+		'--------------------------------------------------------------------
+		Control GroupBox	Position 5,100			ID CTRL_GRP_COLUMN + 2
+			Width 250	Height 45
+			Title "Second Column"
+		Control StaticText	Position 15,110		ID CTRL_LBL_TITLE + 2
+			Title "Title"
+		Control EditText	Position 15,120		ID CTRL_TXT_TITLE + 2
+			Width 60
+			Value marrSearchColTitles(2)
 
-			'--------------------------------------------------------------------
-			Control GroupBox	Position 5,100			ID CTRL_GRP_COLUMN + 2
-				Width 250	Height 45
-				Title "Second Column"
+		Control StaticText	Position 80,110		ID CTRL_LBL_COLUMNS + 2
+			Title "Column"
+		Control PopupMenu	Position 80,120		ID CTRL_LST_COLUMNS + 2
+			Width 95
 
-			Control StaticText	Position 15,110		ID CTRL_LBL_TITLE + 2
-				Title "Title"
-			Control EditText	Position 15,120		ID CTRL_TXT_TITLE + 2
-				Width 60
-				Value marrSearchColTitles(2)
+		Control CheckBox	Position 120,110		ID CTRL_CHK_IS_WIDE + 2
+			Title "Wide Field"
+			Value marrIsWide(2)
+			Calling DLGCWSHandler_IsWideClicked
 
-			Control StaticText	Position 80,110		ID CTRL_LBL_COLUMNS + 2
-				Title "Column"
-			Control PopupMenu	Position 80,120		ID CTRL_LST_COLUMNS + 2
-				Width 95
+		Control StaticText	Position 180,110		ID CTRL_LBL_SEARCH_METHOD + 2
+			Title "Search Operator"
+		Control PopupMenu	Position 180,120		ID CTRL_LST_SEARCH_METHOD + 2
+			Width 65
+			Title "Contains (Like);Equal To (=)"
+			Value Maximum(1, marrSearchMethod(2))
 
-			Control CheckBox	Position 120,110		ID CTRL_CHK_IS_WIDE + 2
-				Title "Wide Field"
-				Value marrIsWide(2)
-				Calling DLGCWSHandler_IsWideClicked
-
-			Control StaticText	Position 180,110		ID CTRL_LBL_SEARCH_METHOD + 2
-				Title "Search Operator"
-			Control PopupMenu	Position 180,120		ID CTRL_LST_SEARCH_METHOD + 2
-				Width 65
-				Title "Contains (Like);Equal To (=)"
-				Value Maximum(1, marrSearchMethod(2))
-
-			'--------------------------------------------------------------------
-			Control GroupBox	Position 5,155			ID CTRL_GRP_COLUMN + 3
-				Width 250	Height 45
-				Title "Third Column"
-
-			Control StaticText	Position 15,165		ID CTRL_LBL_TITLE + 3
-				Title "Title"
-			Control EditText	Position 15,175		ID CTRL_TXT_TITLE + 3
-				Width 60
+		'--------------------------------------------------------------------
+		Control GroupBox	Position 5,155			ID CTRL_GRP_COLUMN + 3
+			Width 250	Height 45
+			Title "Third Column"
+		Control StaticText	Position 15,165		ID CTRL_LBL_TITLE + 3
+			Title "Title"
+		Control EditText	Position 15,175		ID CTRL_TXT_TITLE + 3
+			Width 60
 				Value marrSearchColTitles(3)
 
-			Control StaticText	Position 80,165		ID CTRL_LBL_COLUMNS + 3
-				Title "Column"
-			Control PopupMenu	Position 80,175		ID CTRL_LST_COLUMNS + 3
-				Width 95
+		Control StaticText	Position 80,165		ID CTRL_LBL_COLUMNS + 3
+			Title "Column"
+		Control PopupMenu	Position 80,175		ID CTRL_LST_COLUMNS + 3
+			Width 95
 
-			Control CheckBox	Position 120,165		ID CTRL_CHK_IS_WIDE + 3
-				Title "Wide Field"
-				Value marrIsWide(3)
-				Calling DLGCWSHandler_IsWideClicked
+		Control CheckBox	Position 120,165		ID CTRL_CHK_IS_WIDE + 3
+			Title "Wide Field"
+			Value marrIsWide(3)
+			Calling DLGCWSHandler_IsWideClicked
 
-			Control StaticText	Position 180,165		ID CTRL_LBL_SEARCH_METHOD + 3
-				Title "Search Operator"
-			Control PopupMenu	Position 180,175		ID CTRL_LST_SEARCH_METHOD + 3
-				Width 65
-				Title "Contains (Like);Equal To (=)"
-				Value Maximum(1, marrSearchMethod(3))
+		Control StaticText	Position 180,165		ID CTRL_LBL_SEARCH_METHOD + 3
+			Title "Search Operator"
+		Control PopupMenu	Position 180,175		ID CTRL_LST_SEARCH_METHOD + 3
+			Width 65
+			Title "Contains (Like);Equal To (=)"
+			Value Maximum(1, marrSearchMethod(3))
 
-			Control OKButton
-				Calling DLGCWSHandler_OKClicked
-			Control CancelButton
+		Control OKButton
+			Calling DLGCWSHandler_OKClicked
+		Control CancelButton
 
-		If not CommandInfo(CMD_INFO_DLG_OK) Then
-			Exit Function
+	'**Close the table if it was opened by the Config Dialog procedure
+	If mbTableOpenedByDialog Then
+		If TABIsOpen(DLGCWSGetTable()) Then
+			Call TABClose(DLGCWSGetTable())
 		End If
+		mbTableOpenedByDialog = FALSE
+	End If
 
+	If not CommandInfo(CMD_INFO_DLG_OK) Then
+		Exit Function
+	End If
 
 DLGConfigureWildcardSearch = TRUE
 

@@ -255,7 +255,8 @@ Sub DLGFUWCHandler_OKClicked
 
 Dim	sValue, sCond, sCmd, sOrderBy, sTab, sTabFile As String,
 	nNumRows, nNumMatchFound, i, nTime, nCond, nValuesGiven As Integer,
-	arrCol(3) As Alias
+	arrCol(3) As Alias,
+	tTime As Time
 
 OnError GoTo ErrorOccured
 
@@ -295,6 +296,7 @@ OnError GoTo ErrorOccured
 
 
 	nTime	= Timer()
+	tTime	= CurTime()
 
 	If DLGFUWCSearchDatabaseTable() Then
 '		nNumMatchFound = DLGFUWGetNumberOfMatchingRecords()
@@ -328,13 +330,12 @@ OnError GoTo ErrorOccured
 '		End If
 	Else
 		For nCond = 1 To DLGFUWCNumSearchControls()
+			If nCond = 1 Then
+				sOrderBy = DLGFUWCGetColumnToSearch(nCond)
+			Else
+				sOrderBy = sOrderBy & ", " & DLGFUWCGetColumnToSearch(nCond)
+			End If
 			If DLGFUWCGetSearchValue(nCond) <> "" Then
-				If nCond = 1 Then
-					sOrderBy = DLGFUWCGetColumnToSearch(nCond)
-				Else
-					sOrderBy = sOrderBy & ", " & DLGFUWCGetColumnToSearch(nCond)
-				End If
-
 				If DLGFUWCGetColumnToSearchMethod(nCond) = SEARCH_TYPE_LIKE Then
 					If ColumnInfo(DLGFUWCGetMITable(), DLGFUWCGetColumnToSearch(nCond), COL_INFO_TYPE) = COL_TYPE_CHAR Then
 						sCond	= DLGFUWCGetColumnToSearch(nCond) & " Like " & eye & DLGFUWCGetSearchValue(nCond) & eye
@@ -368,7 +369,8 @@ OnError GoTo ErrorOccured
 		nNumRows	= TableInfo(sTab, TAB_INFO_NROWS)
 	End If
 
-	Call DEBUGPrint("Loaded " & nNumRows & " rows after " & (Timer() - nTime) & " secs")
+'	Call DEBUGPrint("Loaded " & nNumRows & " rows after " & (Timer() - nTime) & " secs")
+	Call DEBUGPrint("Loaded " & nNumRows & " rows after " & (CurTime() - tTime) & " secs")
 
 	ReDim arrCol(DLGFUWCNumSearchControls())
 	For nCond = 1 To DLGFUWCNumSearchControls()
@@ -409,13 +411,15 @@ OnError GoTo ErrorOccured
 	End If
 
 	Alter Control CTRL_LST_RESULTS Title From Variable marrResults
-	Call DEBUGPrint("Added " & Ubound(marrResults) & " rows to dialog after " & (Timer() - nTime) & " secs")
+'	Call DEBUGPrint("Added " & Ubound(marrResults) & " rows to dialog after " & (Timer() - nTime) & " secs")
+	Call DEBUGPrint("Added " & Ubound(marrResults) & " rows to dialog after " & (CurTime() - tTime) & " secs")
 
 	If Ubound(marrResults) > 0 Then
 		Alter Control CTRL_CMD_SHOW_ALL Enable
 	End If
 
-	Alter Control CTRL_LBL_NUM_RECORDS_FOUND Title FormatNumber$(nNumRows) & " records found in " & FormatNumber$((Timer() - nTime)) & " secs"
+'	Alter Control CTRL_LBL_NUM_RECORDS_FOUND Title FormatNumber$(nNumRows) & " records found in " & FormatNumber$((Timer() - nTime)) & " secs"
+	Alter Control CTRL_LBL_NUM_RECORDS_FOUND Title FormatNumber$(nNumRows) & " records found in " & FormatNumber$((CurTime() - tTime)) & " secs"
 	Alter Control CTRL_LBL_NUM_RECORDS_FOUND Show
 
 	Exit Sub

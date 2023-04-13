@@ -5,7 +5,16 @@
 '**
 '*******************************************************************************
 '22/09/2022 15.04.34	v1.0.1:	- Improved Wildcard Search to sort by all search columns
-'23/01/2023 07.40.40	v1.0.2:	-DLGConfigureWildcardSearch: Ensured column lists are refreshed for the first table in the list
+'23/01/2023 07.40.40	v1.0.2:	- DLGConfigureWildcardSearch: Column lists are now refreshed for the first table in the list
+'*******************************************************************************
+'Ideas:
+'	- Support multiple wild card search, say for instance 3 and be able to give name and icon for each
+'	- Enable additional search types for wildcard search: Starts with (xyz%), Ends with (%xyz), Is larger than (>), Is smaller than (<)
+'	- Support find search config
+'	- Support multiple Find search, say for instance 3 and be able to give name and icon for each
+'	- Prompt to index columns used for Wildcard Search
+'	- Allow user to pick from a few places where they want the search butons to appear
+'	- Changed timing gtom Time() to Time variable
 '*******************************************************************************
 
 '-------------------------------------
@@ -24,7 +33,7 @@ Define xProgram 		"MultiSearchTool"
 Define xProgramName 	"Multi Search Tool"
 Define xProgramMenu		"MultiSearchTool"
 Define xVersion 		"1.0.2"
-Define xYear			"2022"
+Define xYear			"2023"
 Define xAddToMenuBar	FALSE
 
 Define FILE_INI			GetFolderPath$(FOLDER_MI_PREFERENCE) & xProgram & ".ini"
